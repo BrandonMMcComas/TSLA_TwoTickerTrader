@@ -68,7 +68,7 @@ GATE_THRESHOLD_DEFAULT = 0.55
 BLEND_W_MODEL = 0.70
 BLEND_W_SENT = 0.30
 
-# ---- Decision Engine knobs (sane, conservative defaults) ----
+# ---- Decision Engine knobs (conservative defaults) ----
 GATE_BUFFER_NEAR_COINFLIP = 0.03
 SPREAD_WIDE_BPS_HINT = 50
 GATE_ADJ_SPREAD_WIDE = 0.02
