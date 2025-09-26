@@ -9,6 +9,9 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
+=======
+from PySide6.QtWidgets import QApplication, QLabel, QMainWindow, QTabWidget, QVBoxLayout, QWidget
+main
 
 from app.core.app_config import AppConfig
 from app.core.usb_guard import read_keys_env

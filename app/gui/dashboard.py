@@ -4,6 +4,8 @@ import datetime
 import glob
 import json
 import os
+from typing import List
+main
 
 import pytz
 from dotenv import dotenv_values
@@ -102,9 +104,15 @@ class Dashboard(QWidget):
         v.addWidget(self.lbl_sent)
 
         # Timer storage
+
         self._pup_vals: list[float] = []
         self._sp_tsll_vals: list[float] = []
         self._sp_tsdd_vals: list[float] = []
+=======
+        self._pup_vals: List[float] = []
+        self._sp_tsll_vals: List[float] = []
+        self._sp_tsdd_vals: List[float] = []
+main
 
         # Timers
         self.timer_fast = QTimer(self)

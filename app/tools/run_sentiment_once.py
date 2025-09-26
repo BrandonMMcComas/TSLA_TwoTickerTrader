@@ -1,3 +1,6 @@
+from __future__ import annotations
+
+main
 """
 app.tools.run_sentiment_once
 Manual AM/PM sentiment run:
@@ -18,6 +21,8 @@ Exit codes: 0 success, 2 missing OpenAI key, 3 network/API error, 4 other error.
 
 from __future__ import annotations
 
+=======
+main
 import argparse
 import datetime
 import hashlib
@@ -34,6 +39,13 @@ from app.config.paths import DATA_DIR
 from app.core.app_config import AppConfig
 from app.core.usb_guard import get_keys_dict
 from openai import OpenAI
+=======
+from openai import OpenAI
+
+from app.config.paths import DATA_DIR
+from app.core.app_config import AppConfig
+from app.core.usb_guard import get_keys_dict
+main
 
 NY = pytz.timezone("America/New_York")
 
@@ -99,6 +111,10 @@ def _prune_old(days: int = 30):
 def _dedupe_by_url(items: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     seen = set()
     out = []
+=======
+    seen: set[str] = set()
+    out: List[Dict[str, Any]] = []
+main
     for it in items:
         u = it.get("url") or it.get("link") or ""
         h = hashlib.sha256(u.encode("utf-8")).hexdigest() if u else None
@@ -170,6 +186,9 @@ def _summarize_items(
         "us_macro": [],
         "global_trade": [],
     }
+=======
+    cats: Dict[str, List[float]] = {"company": [], "us_macro": [], "global_trade": []}
+main
 
     sys_prompt = (
         "You are a market news summarizer for TSLA swing trading. "
@@ -222,7 +241,7 @@ def _summarize_items(
             "source": it.get("source"),
         }
         out_items.append(out)
-        cats[category].append(sentiment * relevance)
+        cats.setdefault(category, cats["company"]).append(sentiment * relevance)
 
     def wavg(vals: list[float]) -> float:
         if not vals:

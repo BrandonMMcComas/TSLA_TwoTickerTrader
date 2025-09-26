@@ -109,6 +109,9 @@ def predict_p_up_latest(interval: str) -> float:
     df = fetch_tsla_bars(
         interval=interval, lookback_days=payload.get("lookback_days", 5)
     )
+=======
+    df = fetch_tsla_bars(interval=interval, lookback_days=payload.get("lookback_days", 5))
+main
     df_feat = add_all_features(df)
     X = df_feat[FEATURE_COLS].dropna()
     if X.empty:

@@ -11,8 +11,10 @@ UI:
 
 Runs in a background QThread to avoid blocking the GUI.
 """
-
 from __future__ import annotations
+=======
+from typing import Optional
+main
 
 from PySide6.QtCore import QObject, QThread, Signal, Slot
 from PySide6.QtWidgets import (
@@ -67,7 +69,7 @@ def _is_am_now_et() -> bool:
         import datetime
 
         import pytz
-
+main
         NY = pytz.timezone("America/New_York")
         return datetime.datetime.now(NY).hour < 12
     except Exception:
@@ -110,8 +112,8 @@ class ExtendedSettingsPanel(sp.SettingsPanel):
         self._btn.clicked.connect(self._on_click)
 
         # Thread/worker holders
-        self._thr = None
-        self._worker = None
+        self._thr: Optional[QThread] = None
+        self._worker: Optional[_SentimentWorker] = None
 
     def _on_click(self):
         mode = self._mode.currentText()

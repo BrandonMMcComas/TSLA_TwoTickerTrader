@@ -1,3 +1,6 @@
+from __future__ import annotations
+
+main
 """
 logs_panel.py — Hotfix v1.4.5
 
@@ -16,6 +19,8 @@ import os
 import subprocess
 import sys
 from pathlib import Path
+=======
+main
 
 from PySide6.QtCore import QTimer
 from PySide6.QtGui import QTextCursor

@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import os
 from typing import Optional
+=======
+main
 
 from dotenv import dotenv_values
 from PySide6.QtCore import QTimer

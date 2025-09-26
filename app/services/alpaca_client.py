@@ -1,4 +1,8 @@
 from typing import List, Optional, Union
+=======
+
+from typing import Any, List, Optional, Union, cast
+main
 
 from alpaca.trading.client import TradingClient
 from alpaca.trading.enums import OrderSide, OrderStatus, TimeInForce
@@ -28,13 +32,13 @@ class AlpacaService:
         self.client = TradingClient(api_key, api_secret, paper=False, raw_data=raw_data)
 
     # ---- Account & Positions ----
-    def get_account(self):
+    def get_account(self) -> Any:
         return self.client.get_account()
 
-    def get_all_positions(self):
+    def get_all_positions(self) -> Any:
         return self.client.get_all_positions()
 
-    def get_position(self, symbol: str):
+    def get_position(self, symbol: str) -> Any | None:
         try:
             return self.client.get_open_position(symbol)
         except Exception:
@@ -92,17 +96,22 @@ class AlpacaService:
         return self.client.replace_order_by_id(order_id, r)
 
     def cancel_order(self, order_id: str) -> None:
-        return self.client.cancel_order_by_id(order_id)
+        self.client.cancel_order_by_id(order_id)
 
     def get_open_orders(self, symbol: Optional[str] = None) -> List[AlpacaOrder]:
         params = GetOrdersRequest(status=OrderStatus.OPEN)
-        orders = self.client.get_orders(filter=params)
+        raw_orders = self.client.get_orders(filter=params)
+        orders = cast(List[AlpacaOrder], list(raw_orders or []))
         if symbol:
             orders = [
                 o
                 for o in orders
+
                 if (getattr(o, "symbol", None) or getattr(o, "asset_symbol", None))
                 == symbol
+=======
+                if (getattr(o, "symbol", None) or getattr(o, "asset_symbol", None)) == symbol
+main
             ]
         return orders
 

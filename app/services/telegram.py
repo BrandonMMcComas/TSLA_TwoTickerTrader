@@ -1,3 +1,6 @@
+from __future__ import annotations
+
+main
 """
 app.services.telegram — minimal Telegram Bot API helper (no extra deps)
 - Sends messages using HTTPS to api.telegram.org
@@ -39,8 +42,8 @@ class TelegramNotifier:
         if parse_mode:
             payload["parse_mode"] = parse_mode
         try:
-            r = requests.post(url, json=payload, timeout=10)
-            return r.ok
+            response = requests.post(url, json=payload, timeout=10)
+            return bool(response.ok)
         except Exception:
             return False
 
@@ -51,10 +54,10 @@ class TelegramNotifier:
             return None
         url = f"https://api.telegram.org/bot{self.token}/getUpdates"
         try:
-            r = requests.get(url, timeout=10)
-            if not r.ok:
+            response = requests.get(url, timeout=10)
+            if not response.ok:
                 return None
-            js = r.json()
+            js = response.json()
             # Take the most recent update's chat id
             for upd in reversed(js.get("result", [])):
                 try:

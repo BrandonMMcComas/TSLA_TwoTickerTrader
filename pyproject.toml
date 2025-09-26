@@ -26,3 +26,36 @@ disable_error_code = ["import-untyped"]
 [[tool.mypy.overrides]]
 module = "app.*"
 check_untyped_defs = true
+=======
+target-version = "py310"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["F", "I"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["app"]
+
+[tool.mypy]
+python_version = "3.10"
+warn_unused_configs = true
+ignore_missing_imports = true
+warn_return_any = true
+warn_unused_ignores = true
+follow_imports = "silent"
+namespace_packages = true
+explicit_package_bases = true
+mypy_path = ["."]
+
+[[tool.mypy.overrides]]
+module = [
+    "pytz",
+    "requests",
+    "feedparser",
+    "apscheduler.*",
+    "dotenv",
+    "openai",
+]
+ignore_missing_imports = true
+
+main
