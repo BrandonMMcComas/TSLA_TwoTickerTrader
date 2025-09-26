@@ -1,0 +1,15 @@
+# secrets
+*.env
+keys.env
+.env*
+config/*.json
+*.pem
+*.key
+# python
+__pycache__/
+*.pyc
+.venv/
+# build / dist
+dist/
+build/
+*.spec

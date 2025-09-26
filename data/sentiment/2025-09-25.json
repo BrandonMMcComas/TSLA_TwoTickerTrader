@@ -1,0 +1,120 @@
+{
+  "daily_score": -0.0318,
+  "category_scores": {
+    "company": -0.2122,
+    "us_macro": 0.1167,
+    "global_trade": 0.0
+  },
+  "updated_at": "2025-09-25T15:21:56.899799-04:00",
+  "items": [
+    {
+      "category": "company",
+      "sentiment": -1.0,
+      "relevance": 0.8,
+      "summary": "Tesla's sales dropped 22%, while BYD significantly increased deliveries, indicating competitive pressure in the EV market.",
+      "title": "Watch Intel Seeks Apple Investment & HSBC Quantum ...",
+      "url": "https://www.bloomberg.com/news/videos/2025-09-25/daybreak-europe-9-25-2025-video?srnd=phx-technology",
+      "source": "cse"
+    },
+    {
+      "category": "company",
+      "sentiment": -0.5,
+      "relevance": 0.7,
+      "summary": "BYD outsells Tesla in the EU for the second month, while Stellantis shows a return to sales growth.",
+      "title": "Hitachi Zosen <7004.T>-2008/09 group results | Reuters",
+      "url": "https://www.reuters.com/article/world/hitachi-zosen-7004t-200809-group-results-idUST13606I2U/",
+      "source": "cse"
+    },
+    {
+      "category": "us_macro",
+      "sentiment": 0.5,
+      "relevance": 0.7,
+      "summary": "New car sales are increasing as consumers anticipate tariffs and higher prices, benefiting companies like Tesla.",
+      "title": "New car sales see boost as consumers fear tariffs, higher prices",
+      "url": "https://www.cnbc.com/2025/09/25/new-car-sales-see-boost-as-consumers-fear-tariffs-higher-prices.html",
+      "source": "cse"
+    },
+    {
+      "category": "company",
+      "sentiment": 0.5,
+      "relevance": 0.7,
+      "summary": "Tesla urged the Trump administration to maintain vehicle emissions standards and the U.S. finding on greenhouse gases.",
+      "title": "Environmental & Climate News | Reuters",
+      "url": "https://www.reuters.com/business/environment/",
+      "source": "cse"
+    },
+    {
+      "category": "company",
+      "sentiment": 0.2,
+      "relevance": 0.6,
+      "summary": "Xiaomi's founder Lei Jun compares the new Xiaomi 17 smartphone to the iPhone, highlighting battery life and camera quality, while also contrasting Xiaomi's cars with Tesla's.",
+      "title": "Billionaire Xiaomi Founder Unveils a $630 Smartphone Answer to ...",
+      "url": "https://www.bloomberg.com/news/articles/2025-09-25/billionaire-xiaomi-founder-unveils-a-630-answer-to-iphone-17",
+      "source": "cse"
+    },
+    {
+      "category": "company",
+      "sentiment": -0.5,
+      "relevance": 0.7,
+      "summary": "Tesla's earnings may decline by up to 25% over the next five years, impacting its financial outlook.",
+      "title": "Sustainable Finance & Reporting | Sustainable Business News ...",
+      "url": "https://www.reuters.com/sustainability/sustainable-finance-reporting/",
+      "source": "cse"
+    },
+    {
+      "category": "company",
+      "sentiment": -0.6,
+      "relevance": 0.8,
+      "summary": "Tesla sales decline in Europe as BYD triples its deliveries, highlighting a significant market shift.",
+      "title": "Watch Tesla Sales Slump as BYD Surges in Europe Car Market ...",
+      "url": "https://www.bloomberg.com/news/videos/2025-09-25/the-pulse-9-25-2025-video",
+      "source": "cse"
+    },
+    {
+      "category": "us_macro",
+      "sentiment": 0.5,
+      "relevance": 0.7,
+      "summary": "Earnings growth is highlighted as the key driver for equity returns, with a note on compliance without purchasing credits from Tesla or other EV manufacturers.",
+      "title": "Watch Bloomberg Surveillance 9/25/2025 - Bloomberg",
+      "url": "https://www.bloomberg.com/news/videos/2025-09-25/bloomberg-surveillance-9-25-2025-video",
+      "source": "cse"
+    },
+    {
+      "category": "company",
+      "sentiment": -0.5,
+      "relevance": 0.8,
+      "summary": "Tesla's EU registrations fell in August, continuing a trend of disappointing performance for the EV maker.",
+      "title": "Stocks to Watch Thursday: Tesla, Oracle, Intel, IBM",
+      "url": "https://www.wsj.com/livecoverage/stock-market-today-dow-sp-500-nasdaq-09-25-2025/card/stocks-to-watch-thursday-intel-oracle-hertz-vykw1R9NtfFQYswDcpwB?gaa_at=eafs&gaa_n=ASWzDAjODxDYpFd-OhnqORJo2rvy1XimNoLO27fh2uTZBB8E5DAEDCVz3A9G&gaa_ts=68d599bd&gaa_sig=AYQVJCLf_2z-Qt7_c24ZOwpFMZdwJgPTStBm_777hCmLmxcwi-oCi7vFaNQ-2r5woWhK4zp86YstZJrddcjJng%3D%3D",
+      "source": "cse"
+    },
+    {
+      "category": "company",
+      "sentiment": 0.0,
+      "relevance": 0.0,
+      "summary": "Neutral (parser fallback).",
+      "title": "value: (COKE.O) | Stock Insights & Latest News | Reuters",
+      "url": "https://www.reuters.com/markets/companies/COKE.O/stock-story/",
+      "source": "cse"
+    },
+    {
+      "category": "us_macro",
+      "sentiment": -0.5,
+      "relevance": 0.7,
+      "summary": "US stocks declined as investors await catalysts and inflation data, following a record rally from the Fed's rate cut.",
+      "title": "US Stocks Decline as Investors Await Catalysts, Inflation Data ...",
+      "url": "https://www.bloomberg.com/news/articles/2025-09-25/us-stocks-decline-as-investors-await-catalysts-inflation-data?srnd=phx-fixed-income",
+      "source": "cse"
+    },
+    {
+      "category": "company",
+      "sentiment": 0.0,
+      "relevance": 0.0,
+      "summary": "Neutral (parser fallback).",
+      "title": "NXST: Nexstar Media Group Inc - Stock Price, Quote and News ...",
+      "url": "https://www.cnbc.com/quotes/NXST",
+      "source": "cse"
+    }
+  ],
+  "run_kind": "pm"
+}

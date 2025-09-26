@@ -1,0 +1,120 @@
+{
+  "daily_score": -0.0009,
+  "category_scores": {
+    "company": -0.0027,
+    "us_macro": 0.0,
+    "global_trade": 0.0
+  },
+  "updated_at": "2025-09-26T08:31:26.262253-04:00",
+  "items": [
+    {
+      "category": "company",
+      "sentiment": 0.0,
+      "relevance": 0.0,
+      "summary": "Neutral (parser fallback).",
+      "title": "Watch B Capital Chair on Tech, AI and Healthcare Investing ...",
+      "url": "https://www.bloomberg.com/news/videos/2025-09-26/b-capital-chair-on-tech-ai-and-healthcare-investing-video?srnd=phx-technology",
+      "source": "cse"
+    },
+    {
+      "category": "company",
+      "sentiment": 0.8,
+      "relevance": 0.9,
+      "summary": "Tesla focuses on a camera and AI-based approach for its Robotaxi future, diverging from traditional LIDAR and radar technologies.",
+      "title": "Watch Robotaxis Hit Global Fast Lane - Bloomberg",
+      "url": "https://www.bloomberg.com/news/videos/2025-09-26/robotaxis-hit-global-fast-lane?srnd=all",
+      "source": "cse"
+    },
+    {
+      "category": "company",
+      "sentiment": 0.0,
+      "relevance": 0.0,
+      "summary": "Neutral (parser fallback).",
+      "title": "TXN: Texas Instruments Inc - Stock Price, Quote and News - CNBC",
+      "url": "https://www.cnbc.com/quotes/TXN",
+      "source": "cse"
+    },
+    {
+      "category": "company",
+      "sentiment": 0.0,
+      "relevance": 0.0,
+      "summary": "Neutral (parser fallback).",
+      "title": "Apple Inc - Company Profile and News - Bloomberg Markets",
+      "url": "https://www.bloomberg.com/profile/company/AAPL:US",
+      "source": "cse"
+    },
+    {
+      "category": "company",
+      "sentiment": -0.5,
+      "relevance": 0.7,
+      "summary": "Tesla stock slips as BYD takes the lead in Europe's EV market.",
+      "title": "STLA: Stellantis NV - Stock Price, Quote and News - CNBC",
+      "url": "https://www.cnbc.com/quotes/STLA",
+      "source": "cse"
+    },
+    {
+      "category": "company",
+      "sentiment": 0.0,
+      "relevance": 0.0,
+      "summary": "Neutral (parser fallback).",
+      "title": "Watch TikTok's $14 Billion Price Tag in Trump Deal, Europe's ...",
+      "url": "https://www.bloomberg.com/news/videos/2025-09-26/the-pulse-9-26-2025-video?srnd=phx-economics-v2",
+      "source": "cse"
+    },
+    {
+      "category": "company",
+      "sentiment": -0.5,
+      "relevance": 0.8,
+      "summary": "Tesla's sales slump in Europe is negatively impacting its stock price.",
+      "title": "Latest from CNBC",
+      "url": "https://www.cnbc.com/latest-from-cnbc/",
+      "source": "cse"
+    },
+    {
+      "category": "company",
+      "sentiment": 0.0,
+      "relevance": 0.7,
+      "summary": "The article discusses the competitive landscape between BYD Auto and Tesla in the China EV market.",
+      "title": "Closing Bell: Overtime breaking news, corporate earnings and post ...",
+      "url": "https://www.cnbc.com/closing-bell-overtime/",
+      "source": "cse"
+    },
+    {
+      "category": "company",
+      "sentiment": 0.0,
+      "relevance": 0.0,
+      "summary": "Neutral (parser fallback).",
+      "title": "CCJ: Cameco Corp - Stock Price, Quote and News - CNBC",
+      "url": "https://www.cnbc.com/quotes/CCJ",
+      "source": "cse"
+    },
+    {
+      "category": "company",
+      "sentiment": 0.0,
+      "relevance": 0.0,
+      "summary": "Neutral (parser fallback).",
+      "title": "FVRR: Fiverr International Ltd - Stock Price, Quote and News - CNBC",
+      "url": "https://www.cnbc.com/quotes/FVRR",
+      "source": "cse"
+    },
+    {
+      "category": "us_macro",
+      "sentiment": 0.0,
+      "relevance": 0.5,
+      "summary": "Fed Fund Futures reach record highs as markets focus on quarter-end; Transport for London issues bonds for the first time since 2015.",
+      "title": "GT5 Analysis - US TREASURY N/B - Bloomberg",
+      "url": "https://www.bloomberg.com/quote/GT5:GOV",
+      "source": "cse"
+    },
+    {
+      "category": "company",
+      "sentiment": 0.0,
+      "relevance": 0.0,
+      "summary": "Neutral (parser fallback).",
+      "title": "Squawk Box Asia",
+      "url": "https://www.cnbc.com/asia-squawk-box/",
+      "source": "cse"
+    }
+  ],
+  "run_kind": "am"
+}

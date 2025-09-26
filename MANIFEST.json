@@ -1,0 +1,198 @@
+{
+  "name": "TSLA_TwoTickerTrader",
+  "section": "06 - QA, Packaging & Final",
+  "version": "1.4.0",
+  "updated_at": "2025-09-25T18:34:28.564369Z",
+  "files": [
+    {
+      "path": "CHANGELOG.md",
+      "size": 1298,
+      "sha256": "1e56fbb0939cb14821c7a3dd476313ce15934153a0db2ba4bf26dc0225aa4eac"
+    },
+    {
+      "path": "MANIFEST.json",
+      "size": 5566,
+      "sha256": "85073ec18392869680c58023273b04d58f2d315e4ddacc4127af53c857c3fd15"
+    },
+    {
+      "path": "README.md",
+      "size": 2526,
+      "sha256": "9294d40b2a7088214b80a92f1fef2bb3c5b23fee1abd378aa44299149064b534"
+    },
+    {
+      "path": "app/__init__.py",
+      "size": 22,
+      "sha256": "5377ff260af7ce9822606da42dcbdc4f4e5342c57337d2a4b60fdfdd0f4e6450"
+    },
+    {
+      "path": "app/config/__init__.py",
+      "size": 45,
+      "sha256": "dee8e6550126fa50c6e50ae3b10347401f10ab47dbcba8f81c1c06b93106da8a"
+    },
+    {
+      "path": "app/config/paths.py",
+      "size": 476,
+      "sha256": "32b7c3e3e98b42122da48dbc7a85b65128a242f18fd9483aba1dddc7bd692cf0"
+    },
+    {
+      "path": "app/config/settings.py",
+      "size": 2075,
+      "sha256": "1c3804a9433fb0a1b9385e3d92d97efbac7bddb87983bb9d02805360d778f78f"
+    },
+    {
+      "path": "app/core/__init__.py",
+      "size": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "app/core/app_config.py",
+      "size": 609,
+      "sha256": "a3e00de85475c9877beb32d01b8e239f5ded5eaf36c1c97ba4840238a60c1dc6"
+    },
+    {
+      "path": "app/core/logging_setup.py",
+      "size": 437,
+      "sha256": "82132114661b427927ccf30a32c05700d9d3a59ef5161eb85f6b225ff08de187"
+    },
+    {
+      "path": "app/core/runtime_state.py",
+      "size": 751,
+      "sha256": "04d117a26c709c095daae49599f2b8a51db42e2d9c64d3edf3c4b3644ea1a8fb"
+    },
+    {
+      "path": "app/core/storage.py",
+      "size": 819,
+      "sha256": "5e492ffe4fc2a2c675f370a38818405967de6a7208bf55d887e8c58437a3a06b"
+    },
+    {
+      "path": "app/core/usb_guard.py",
+      "size": 342,
+      "sha256": "50b2885a2f2db0f3fde14b83a26254692d8cd9b069c1be3575997f70bc1e7c66"
+    },
+    {
+      "path": "app/gui/__init__.py",
+      "size": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "app/gui/dashboard.py",
+      "size": 8392,
+      "sha256": "d8a0d3ebebf9d43889469bc501b5f1767f3621396416e0ea3a49c1a6bd8839e5"
+    },
+    {
+      "path": "app/gui/logs_panel.py",
+      "size": 1652,
+      "sha256": "254629a0d3982fc10fa5ca2039ba893cb1b743fe20e4e503759db3f87e063ec2"
+    },
+    {
+      "path": "app/gui/main_window.py",
+      "size": 2648,
+      "sha256": "c53d6d5351fe7d19a75db5c0c33f09103d31e4f133570f026e0ede6161437c50"
+    },
+    {
+      "path": "app/gui/settings_panel.py",
+      "size": 8212,
+      "sha256": "8bceaa3ffa7b5bb0af5bc1a1ee0ea24241aaa9fabb32252e2ca720973b984da5"
+    },
+    {
+      "path": "app/gui/sparkline.py",
+      "size": 1242,
+      "sha256": "46dd3859afa5bdb1e651651dc3c87a0739c8c83fae5bdf32749c20c7439beb05"
+    },
+    {
+      "path": "app/gui/trade_control.py",
+      "size": 3956,
+      "sha256": "608f942bb7d5a2e14fb6d8410ddedb9af8446aa18d6257be28f9e05b9c7e7587"
+    },
+    {
+      "path": "app/gui/train_panel.py",
+      "size": 5176,
+      "sha256": "dfdd01179ab1830c898c4fdcfc17ca1b64f2791bf9d77e72afb4b9c80461ea5c"
+    },
+    {
+      "path": "app/main.py",
+      "size": 329,
+      "sha256": "4c654665ae0c7358411bf1dcffbde4dd6f0c55ce4e2cb31245567ee83524ab5d"
+    },
+    {
+      "path": "app/services/__init__.py",
+      "size": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "app/services/alpaca_client.py",
+      "size": 3225,
+      "sha256": "a8e3b1524b79d324fb271f262d44b8f8dd45b41c4363610c1a7cec625f83e23e"
+    },
+    {
+      "path": "app/services/features.py",
+      "size": 3950,
+      "sha256": "86b81f2ab7349a741f4cfb7c44dfbab19633821fd0c8c61dd30f62b5ee15063e"
+    },
+    {
+      "path": "app/services/history.py",
+      "size": 1252,
+      "sha256": "e3384f4ea6eea984d91359019c7e2e13003c7d1b1ba56d613d435025265fa4d5"
+    },
+    {
+      "path": "app/services/live_vwap.py",
+      "size": 1443,
+      "sha256": "cd70dc636f682561aa37ae565c60889d4f68dd29611acd271acb8d272400b46c"
+    },
+    {
+      "path": "app/services/market_data.py",
+      "size": 328,
+      "sha256": "0132ff842dd1ce94e4141623a2af4c5c11b7c1251f7a59de4f11c33adfd4359b"
+    },
+    {
+      "path": "app/services/model.py",
+      "size": 3424,
+      "sha256": "4e6d3420a3b532a356e3bb1011283a23f163f8a307a26e1275083e6b4f3c2705"
+    },
+    {
+      "path": "app/services/pricing.py",
+      "size": 1135,
+      "sha256": "d1a5183b987cd228875920b77b7de7ed2e569d83a67c5510ae5f5ba9681c4546"
+    },
+    {
+      "path": "app/services/trader.py",
+      "size": 15249,
+      "sha256": "29abc30246527e33470d1df31eaf48f83311f3ac3b6462bc92e58b23f07f596a"
+    },
+    {
+      "path": "app/tests/test_imports.py",
+      "size": 265,
+      "sha256": "116d39ac60bfa9905b1c334327c1a47e9365c891b402fc26d88544a444800715"
+    },
+    {
+      "path": "app/tools/create_shortcut.py",
+      "size": 520,
+      "sha256": "0f623c6b7fa926981b3b6ba6bbe949325af8b209110b3933beda67458aefc7ee"
+    },
+    {
+      "path": "assets/icons/tesla_coil.ico",
+      "size": 318,
+      "sha256": "dff662d397182390bb06dc561fa823a35ddb9840061adc389a3c4193492eed90"
+    },
+    {
+      "path": "build_exe.cmd",
+      "size": 224,
+      "sha256": "c4ca0bc3f7d5b6f72b97786d7f87beb6d75096b8b160d4e33ac347192948ad3b"
+    },
+    {
+      "path": "requirements.txt",
+      "size": 229,
+      "sha256": "261b276154b117b84c5e4ef97d50981e52f9a021c53c0e859b537e0c048c8bcd"
+    },
+    {
+      "path": "start_app.cmd",
+      "size": 327,
+      "sha256": "00aa5d562f2f1998b10e4e56a0d1d4b0d2f9649a7da936300415dfe20b720a32"
+    },
+    {
+      "path": "tsla_trader.spec",
+      "size": 942,
+      "sha256": "a98a7a643d7674106d6f34596dc9c8f24e061690012848a8817747697293a73e"
+    }
+  ]
+}
