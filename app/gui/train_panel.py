@@ -1,93 +1,161 @@
 from __future__ import annotations
-from PySide6.QtWidgets import QWidget, QLabel, QVBoxLayout, QHBoxLayout, QPushButton, QComboBox, QSpinBox, QSlider, QFrame
-from PySide6.QtCore import Qt, QTimer
-from app.services.model import train_direction_model, predict_p_up_latest
-from app.config import settings as cfg
+
+"""Training panel with non-blocking model retraining hooks."""
+
+import glob
+import os
+from dataclasses import dataclass
+from typing import Optional
+
+from PySide6.QtCore import QObject, QThread, QTimer, Signal, Slot
+from PySide6.QtWidgets import (
+    QHBoxLayout,
+    QLabel,
+    QMessageBox,
+    QProgressBar,
+    QPushButton,
+    QVBoxLayout,
+    QWidget,
+)
+
 from app.config.paths import DATA_DIR
-import os, json, glob, math
-def _read_daily_sentiment_score() -> float | None:
-    sdir = DATA_DIR / "sentiment"
-    files = sorted(glob.glob(os.path.join(sdir, "*.json")))
-    if not files: return None
-    latest = files[-1]
-    try:
-        with open(latest, "r", encoding="utf-8") as f:
-            doc = json.load(f)
-        return float(doc.get("daily_score"))
-    except Exception:
-        return None
+from app.services.model import predict_p_up_latest, train_direction_model
+
+
+@dataclass
+class TrainResult:
+    """Represents metrics returned from a training run."""
+
+    accuracy: Optional[float]
+    roc_auc: Optional[float]
+    precision_up: Optional[float]
+    n_train: int
+    n_test: int
+
+
+class TrainWorker(QObject):
+    """Runs the heavy training task on a worker thread."""
+
+    finished = Signal(object)
+    failed = Signal(str)
+
+    def __init__(self, interval: str, lookback_days: int) -> None:
+        super().__init__()
+        self.interval = interval
+        self.lookback_days = lookback_days
+
+    @Slot()
+    def run(self) -> None:
+        try:
+            result = train_direction_model(self.interval, self.lookback_days)
+            metrics = TrainResult(
+                accuracy=result.metrics.get("accuracy"),
+                roc_auc=result.metrics.get("roc_auc"),
+                precision_up=result.metrics.get("precision_up"),
+                n_train=result.n_train,
+                n_test=result.n_test,
+            )
+            self.finished.emit(metrics)
+        except Exception as exc:  # noqa: BLE001 - propagate to UI
+            self.failed.emit(str(exc))
+
+
 class TrainPanel(QWidget):
+    """Minimal training launcher with dataset status and progress reporting."""
+
     def __init__(self) -> None:
         super().__init__()
-        v = QVBoxLayout(self)
-        row = QHBoxLayout()
-        row.addWidget(QLabel("<b>Interval</b>"))
-        self.cb_interval = QComboBox(); self.cb_interval.addItems(["1m","5m"])
-        row.addWidget(self.cb_interval)
-        row.addWidget(QLabel("<b>Lookback (days)</b>"))
-        self.sb_days = QSpinBox(); self.sb_days.setRange(1, 60); self.sb_days.setValue(5)
-        row.addWidget(self.sb_days)
-        self.btn_train = QPushButton("Train"); row.addWidget(self.btn_train)
-        v.addLayout(row)
-        self.lbl_metrics = QLabel("Metrics: (train to populate)")
-        v.addWidget(self.lbl_metrics)
-        gate_row = QHBoxLayout()
-        self.lbl_p_up = QLabel("p_up: –")
-        self.lbl_p_blend = QLabel("p_blend: –")
-        gate_row.addWidget(self.lbl_p_up); gate_row.addWidget(self.lbl_p_blend); gate_row.addStretch(1)
-        gate_row.addWidget(QLabel("Gate threshold"))
-        self.slider = QSlider(Qt.Horizontal); self.slider.setMinimum(40); self.slider.setMaximum(70); self.slider.setValue(int(cfg.GATE_THRESHOLD_DEFAULT*100))
-        gate_row.addWidget(self.slider)
-        self.lbl_thresh = QLabel(f"{cfg.GATE_THRESHOLD_DEFAULT:.2f}"); gate_row.addWidget(self.lbl_thresh)
-        v.addLayout(gate_row)
-        self.gate_tile = QFrame(); self.gate_tile.setFrameShape(QFrame.Box); self.gate_tile.setStyleSheet("background:#f7f7f7; padding:10px;")
-        self.gate_text = QLabel("Trade Gate: (no model yet)")
-        tlay = QVBoxLayout(self.gate_tile); tlay.addWidget(self.gate_text); v.addWidget(self.gate_tile)
-        v.addStretch(1)
-        self.btn_train.clicked.connect(self._do_train)
-        self.slider.valueChanged.connect(self._on_thresh_change)
-        self.timer = QTimer(self); self.timer.timeout.connect(self._refresh_probs); self.timer.start(30000)
-        self._refresh_probs()
-    def _on_thresh_change(self, val: int):
-        self.lbl_thresh.setText(f"{val/100.0:.2f}"); self._update_gate_tile()
-    def _update_gate_tile(self):
-        def parse(lbl: QLabel):
-            try:
-                return float(lbl.text().split(":")[1].strip())
-            except Exception: return float("nan")
-        p_up = parse(self.lbl_p_up); p_blend = parse(self.lbl_p_blend)
-        th = self.slider.value()/100.0
-        which = p_blend if not math.isnan(p_blend) else p_up
-        if not math.isnan(which):
-            if which >= th:
-                self.gate_text.setText(f"Trade Gate: UP (TSLL) — signal={which:.2f} ≥ threshold {th:.2f}")
-                self.gate_tile.setStyleSheet("background:#e6ffed; border:1px solid #7fd18b; color:#05400A; padding:10px;")
-            else:
-                self.gate_text.setText(f"Trade Gate: DOWN (TSDD) — signal={which:.2f} < threshold {th:.2f}")
-                self.gate_tile.setStyleSheet("background:#ffecec; border:1px solid #e0a0a0; color:#680000; padding:10px;")
+        self._thread: Optional[QThread] = None
+        self._current_interval = "5m"
+        self._lookback_days = 5
+
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(12, 12, 12, 12)
+        layout.setSpacing(12)
+
+        header = QLabel("Model Training")
+        header.setStyleSheet("font-weight:600; font-size:14pt;")
+        layout.addWidget(header)
+
+        self.dataset_label = QLabel(self._dataset_status())
+        layout.addWidget(self.dataset_label)
+
+        controls = QHBoxLayout()
+        controls.setSpacing(8)
+        self.btn_train = QPushButton("Run Training")
+        self.btn_train.clicked.connect(self._start_training)
+        controls.addWidget(self.btn_train)
+        controls.addStretch(1)
+        layout.addLayout(controls)
+
+        self.progress = QProgressBar()
+        self.progress.setRange(0, 0)
+        self.progress.hide()
+        layout.addWidget(self.progress)
+
+        self.result_label = QLabel("Metrics: (not trained yet)")
+        layout.addWidget(self.result_label)
+
+        self.status_label = QLabel("Tap Run Training to retrain the classifier.")
+        layout.addWidget(self.status_label)
+
+        self.timer = QTimer(self)
+        self.timer.setInterval(30000)
+        self.timer.timeout.connect(self._refresh_probabilities)
+        self.timer.start()
+        self._refresh_probabilities()
+
+    def _dataset_status(self) -> str:
+        sentiment_dir = DATA_DIR / "sentiment"
+        files = glob.glob(os.path.join(sentiment_dir, "*.json"))
+        return f"Dataset: {len(files)} sentiment files detected." if files else "Dataset: (no sentiment files)."
+
+    @Slot()
+    def _start_training(self) -> None:
+        if self._thread and self._thread.isRunning():
+            return
+        self.progress.show()
+        self.status_label.setText("Training in progress…")
+        self.btn_train.setEnabled(False)
+
+        thread = QThread(self)
+        worker = TrainWorker(self._current_interval, self._lookback_days)
+        worker.moveToThread(thread)
+        thread.started.connect(worker.run)
+        worker.finished.connect(self._on_finished)
+        worker.failed.connect(self._on_failed)
+        worker.finished.connect(thread.quit)
+        worker.failed.connect(thread.quit)
+        worker.finished.connect(worker.deleteLater)
+        worker.failed.connect(worker.deleteLater)
+        thread.finished.connect(thread.deleteLater)
+        self._thread = thread
+        thread.start()
+
+    @Slot(object)
+    def _on_finished(self, metrics: TrainResult) -> None:
+        self.progress.hide()
+        self.btn_train.setEnabled(True)
+        self.status_label.setText("Training completed successfully.")
+        self.result_label.setText(
+            "Metrics — "
+            f"accuracy={metrics.accuracy or float('nan'):.3f}, "
+            f"roc_auc={metrics.roc_auc or float('nan'):.3f}, "
+            f"precision_up={metrics.precision_up or float('nan'):.3f}, "
+            f"n_train={metrics.n_train}, n_test={metrics.n_test}"
+        )
+        self._refresh_probabilities()
+
+    @Slot(str)
+    def _on_failed(self, message: str) -> None:
+        self.progress.hide()
+        self.btn_train.setEnabled(True)
+        self.status_label.setText("Training failed. See logs for details.")
+        QMessageBox.warning(self, "Training Error", message)
+
+    def _refresh_probabilities(self) -> None:
+        p_up = predict_p_up_latest(self._current_interval)
+        if p_up == p_up:
+            self.status_label.setText(f"Latest p_up({self._current_interval}) = {p_up:.3f}")
         else:
-            self.gate_text.setText("Trade Gate: (no signal)")
-            self.gate_tile.setStyleSheet("background:#f7f7f7; padding:10px;")
-    def _do_train(self):
-        self.btn_train.setEnabled(False); self.btn_train.setText("Training…")
-        try:
-            res = train_direction_model(self.cb_interval.currentText(), self.sb_days.value())
-            m = res.metrics
-            self.lbl_metrics.setText(f"Metrics — Acc: {m.get('accuracy', float('nan')):.3f} | ROC AUC: {m.get('roc_auc', float('nan')):.3f} | Precision(up): {m.get('precision_up', float('nan')):.3f} | n_train={res.n_train}, n_test={res.n_test}")
-        except Exception as e:
-            self.lbl_metrics.setText(f"Training error: {e}")
-        finally:
-            self.btn_train.setEnabled(True); self.btn_train.setText("Train")
-            self._refresh_probs()
-    def _refresh_probs(self):
-        p_up = predict_p_up_latest(self.cb_interval.currentText())
-        if p_up == p_up: self.lbl_p_up.setText(f"p_up: {p_up:.3f}")
-        else: self.lbl_p_up.setText("p_up: –")
-        daily = _read_daily_sentiment_score()
-        if daily is not None and daily == daily:
-            p_sent = (daily + 1.0)/2.0
-            p_blend = cfg.BLEND_W_MODEL * (p_up if p_up==p_up else 0.5) + cfg.BLEND_W_SENT * p_sent
-            self.lbl_p_blend.setText(f"p_blend: {p_blend:.3f}")
-        else:
-            self.lbl_p_blend.setText("p_blend: –")
-        self._update_gate_tile()
+            self.status_label.setText("Model probability unavailable.")

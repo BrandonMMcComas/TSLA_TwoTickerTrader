@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 """
 app.tools.run_sentiment_once
 Manual AM/PM sentiment run:
@@ -15,16 +16,23 @@ Usage:
 
 Exit codes: 0 success, 2 missing OpenAI key, 3 network/API error, 4 other error.
 """
-import sys, os, json, time, argparse, datetime, hashlib
-from typing import List, Dict, Any, Tuple
+import argparse
+import datetime
+import hashlib
+import json
+import os
+import sys
+from pathlib import Path
+from typing import Any, Dict, List, Tuple
+
+import feedparser
 import pytz
 import requests
-import feedparser
 from openai import OpenAI
+
 from app.config.paths import DATA_DIR
 from app.core.app_config import AppConfig
 from app.core.usb_guard import get_keys_dict
-from pathlib import Path
 
 NY = pytz.timezone("America/New_York")
 
@@ -65,13 +73,15 @@ def _prune_old(days: int = 30):
             continue
 
 def _dedupe_by_url(items: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    seen = set(); out = []
+    seen: set[str] = set()
+    out: List[Dict[str, Any]] = []
     for it in items:
         u = it.get("url") or it.get("link") or ""
         h = hashlib.sha256(u.encode("utf-8")).hexdigest() if u else None
         if h and h in seen:
             continue
-        if h: seen.add(h)
+        if h:
+            seen.add(h)
         out.append(it)
     return out
 
@@ -113,7 +123,7 @@ def _summarize_items(items: List[Dict[str, Any]], client: OpenAI, run_kind: str)
     # limit to 12 newest-first (we already sorted by freshness via API; keep order)
     items = items[:12]
     out_items = []
-    cats = {"company": [], "us_macro": [], "global_trade": []}
+    cats: Dict[str, List[float]] = {"company": [], "us_macro": [], "global_trade": []}
 
     sys_prompt = (
         "You are a market news summarizer for TSLA swing trading. "
@@ -155,7 +165,7 @@ def _summarize_items(items: List[Dict[str, Any]], client: OpenAI, run_kind: str)
             "source": it.get("source"),
         }
         out_items.append(out)
-        cats[category].append(sentiment * relevance)
+        cats.setdefault(category, cats["company"]).append(sentiment * relevance)
 
     def wavg(vals: list[float]) -> float:
         if not vals: return 0.0

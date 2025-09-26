@@ -1,6 +1,8 @@
+from app.config.paths import ensure_runtime_dirs
 from app.core.logging_setup import setup_logging
 from app.gui.main_window import launch_gui
-from app.config.paths import ensure_runtime_dirs
+
+
 def main():
     ensure_runtime_dirs()
     logger = setup_logging()

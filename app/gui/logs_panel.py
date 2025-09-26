@@ -1,115 +1,258 @@
 from __future__ import annotations
-"""
-logs_panel.py — Hotfix v1.4.5
 
-Fixes:
-- PySide6 enum scoping: QTextCursor.End -> QTextCursor.MoveOperation.End
-- Adds safe tailing of logs/app.log and data/trades.csv with "Open folder" buttons.
+"""Structured log viewer with filters and decision-component highlighting."""
 
-This panel shows:
-- Live tail of logs/app.log
-- Simple table view of data/trades.csv (if present)
-"""
+import csv
+import datetime as dt
+import json
+from dataclasses import dataclass
+from typing import List, Optional
 
-import os
-from PySide6.QtWidgets import QWidget, QVBoxLayout, QLabel, QPushButton, QFileDialog, QHBoxLayout, QPlainTextEdit, QTableWidget, QTableWidgetItem
-from PySide6.QtCore import QTimer, Qt
-from PySide6.QtGui import QTextCursor
-from app.config.paths import LOGS_DIR, DATA_DIR
+from PySide6.QtCore import QDateTime, QObject, QThread, QTimer, Signal, Slot
+from PySide6.QtWidgets import (
+    QComboBox,
+    QDateTimeEdit,
+    QFileDialog,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QPlainTextEdit,
+    QPushButton,
+    QVBoxLayout,
+    QWidget,
+)
+
+from app.config.paths import DATA_DIR, LOGS_DIR
 
 LOG_PATH = LOGS_DIR / "app.log"
 TRADES_CSV = DATA_DIR / "trades.csv"
 
+
+@dataclass
+class LogsPayload:
+    """Bundle of filtered log lines and recent trades."""
+
+    lines: List[str]
+    trades: List[str]
+
+
+class LogsWorker(QObject):
+    """Reads log and trade files in the background."""
+
+    finished = Signal(LogsPayload)
+
+    def __init__(self, since: Optional[dt.datetime]) -> None:
+        super().__init__()
+        self.since = since
+
+    @Slot()
+    def run(self) -> None:
+        lines = _read_log_lines(self.since)
+        trades = _read_trades()
+        self.finished.emit(LogsPayload(lines=lines, trades=trades))
+
+
 class LogsPanel(QWidget):
+    """Filterable view of logs/app.log and data/trades.csv."""
+
     def __init__(self) -> None:
         super().__init__()
-        v = QVBoxLayout(self)
+        self._thread: Optional[QThread] = None
+        self._filters_changed = True
 
-        # Header row with open-folder buttons
-        row = QHBoxLayout()
-        row.addWidget(QLabel("<b>Logs</b>"))
-        btn_open_logs = QPushButton("Open logs folder")
-        btn_open_data = QPushButton("Open data folder")
-        row.addStretch(1); row.addWidget(btn_open_logs); row.addWidget(btn_open_data)
-        v.addLayout(row)
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(12, 12, 12, 12)
+        layout.setSpacing(12)
 
-        # Log tail view
-        self.log_view = QPlainTextEdit(self)
+        filter_row = QHBoxLayout()
+        filter_row.setSpacing(8)
+        filter_row.addWidget(QLabel("Level"))
+        self.level_combo = QComboBox()
+        self.level_combo.addItems(["ALL", "INFO", "WARNING", "ERROR"])
+        filter_row.addWidget(self.level_combo)
+
+        filter_row.addWidget(QLabel("Contains"))
+        self.contains_edit = QLineEdit()
+        filter_row.addWidget(self.contains_edit)
+
+        filter_row.addWidget(QLabel("Since"))
+        self.since_widget = QDateTimeEditExtended()
+        filter_row.addWidget(self.since_widget)
+
+        self.btn_clear = QPushButton("Clear")
+        self.btn_export = QPushButton("Export…")
+        filter_row.addWidget(self.btn_clear)
+        filter_row.addWidget(self.btn_export)
+        filter_row.addStretch(1)
+
+        layout.addLayout(filter_row)
+
+        self.log_view = QPlainTextEdit()
         self.log_view.setReadOnly(True)
-        self.log_view.setMaximumBlockCount(5000)  # auto-prune
-        v.addWidget(self.log_view, 2)
+        self.log_view.setMaximumBlockCount(8000)
+        self.log_view.setStyleSheet("font-family: 'Fira Code', 'Consolas', monospace; font-size:10pt;")
+        layout.addWidget(self.log_view)
 
-        # Trades table (very simple)
-        self.tbl = QTableWidget(self)
-        self.tbl.setColumnCount(6)
-        self.tbl.setHorizontalHeaderLabels(["ts","action","symbol","qty","px","note"])
-        v.addWidget(self.tbl, 1)
+        self.status_label = QLabel("Logs refresh every 2s. Filters apply live.")
+        self.status_label.setStyleSheet("color:#666666;")
+        layout.addWidget(self.status_label)
 
-        # Wire
-        btn_open_logs.clicked.connect(lambda: self._open_folder(LOGS_DIR))
-        btn_open_data.clicked.connect(lambda: self._open_folder(DATA_DIR))
+        self.level_combo.currentTextChanged.connect(self._on_filters_changed)
+        self.contains_edit.textChanged.connect(self._on_filters_changed)
+        self.since_widget.dateTimeChanged.connect(self._on_filters_changed)
+        self.btn_clear.clicked.connect(self._clear_filters)
+        self.btn_export.clicked.connect(self._export)
 
-        # Timer to refresh tail & table
-        self.timer = QTimer(self); self.timer.timeout.connect(self._tick); self.timer.start(1500)
-        self._tick()
+        self.timer = QTimer(self)
+        self.timer.setInterval(2000)
+        self.timer.timeout.connect(self._refresh)
+        self.timer.start()
+        self._refresh()
 
-    def _open_folder(self, path):
-        try:
-            os.startfile(str(path))
-        except Exception:
-            pass
+    def apply_filter_text(self, text: str) -> None:
+        self.contains_edit.setText(text)
+        self._on_filters_changed()
 
-    def _tail_log(self, max_bytes: int = 200_000) -> str:
-        p = LOG_PATH
-        if not p.exists():
-            return "(no app.log yet)"
-        try:
-            size = p.stat().st_size
-            with open(p, "rb") as f:
-                if size > max_bytes:
-                    f.seek(-max_bytes, os.SEEK_END)
-                data = f.read()
-            # try utf-8, fallback
-            try:
-                return data.decode("utf-8", errors="replace")
-            except Exception:
-                return data.decode(errors="replace")
-        except Exception as e:
-            return f"Error reading log: {e}"
+    def _on_filters_changed(self) -> None:
+        self._filters_changed = True
+        self._refresh()
 
-    def _load_trades(self, max_rows: int = 200):
-        p = TRADES_CSV
-        if not p.exists():
-            self.tbl.setRowCount(0)
+    def _clear_filters(self) -> None:
+        self.level_combo.setCurrentIndex(0)
+        self.contains_edit.clear()
+        self.since_widget.reset()
+        self._on_filters_changed()
+
+    def _export(self) -> None:
+        path, _ = QFileDialog.getSaveFileName(self, "Export Logs", str(DATA_DIR / "logs_export.txt"))
+        if not path:
             return
-        try:
-            rows = []
-            with open(p, "r", encoding="utf-8", errors="replace") as f:
-                for i, line in enumerate(f):
-                    if i == 0 and "ts,action" in line:  # header skip
-                        continue
-                    parts = [s.strip() for s in line.strip().split(",")]
-                    rows.append(parts[:6])  # take first 6 cols
-            rows = rows[-max_rows:]
-            self.tbl.setRowCount(len(rows))
-            for r, parts in enumerate(rows):
-                for c in range(6):
-                    val = parts[c] if c < len(parts) else ""
-                    self.tbl.setItem(r, c, QTableWidgetItem(val))
-        except Exception:
-            # soft-fail on csv parse
-            self.tbl.setRowCount(0)
+        with open(path, "w", encoding="utf-8") as handle:
+            handle.write(self.log_view.toPlainText())
 
-    def _tick(self):
-        # tail logs
-        text = self._tail_log()
-        self.log_view.setPlainText(text)
-        # move cursor to end using PySide6 enum scoping
-        try:
-            self.log_view.moveCursor(QTextCursor.MoveOperation.End)
-        except Exception:
-            # last resort: select all then move to end
-            self.log_view.moveCursor(QTextCursor.MoveOperation.End)
+    def _refresh(self) -> None:
+        if self._thread and self._thread.isRunning():
+            return
 
-        # trades table
-        self._load_trades()
+        since_dt = self.since_widget.dateTime().toPython()
+        thread = QThread(self)
+        worker = LogsWorker(since_dt)
+        worker.moveToThread(thread)
+        thread.started.connect(worker.run)
+        worker.finished.connect(self._on_payload)
+        worker.finished.connect(thread.quit)
+        worker.finished.connect(worker.deleteLater)
+        thread.finished.connect(thread.deleteLater)
+        self._thread = thread
+        thread.start()
+
+    @Slot(LogsPayload)
+    def _on_payload(self, payload: LogsPayload) -> None:
+        level = self.level_combo.currentText()
+        text_filter = self.contains_edit.text().strip().lower()
+        filtered: List[str] = []
+        for line in payload.lines:
+            if level != "ALL" and f"[{level}]" not in line:
+                continue
+            if text_filter and text_filter not in line.lower():
+                continue
+            filtered.append(_format_line(line))
+        if payload.trades:
+            filtered.append("\n--- recent trades ---")
+            for trade in payload.trades:
+                if text_filter and text_filter not in trade.lower():
+                    continue
+                filtered.append(trade)
+        self.log_view.setPlainText("\n".join(filtered))
+
+    def focus_on_token(self, token: str) -> None:
+        self.apply_filter_text(token)
+
+
+class QDateTimeEditExtended(QDateTimeEdit):
+    """Date-time selector defaulting to one hour look-back."""
+
+    def __init__(self) -> None:
+        super().__init__(QDateTime.currentDateTime().addSecs(-3600))
+        self.setDisplayFormat("yyyy-MM-dd HH:mm")
+        self.setCalendarPopup(True)
+
+    def reset(self) -> None:
+        self.setDateTime(QDateTime.currentDateTime().addSecs(-3600))
+
+
+def _read_log_lines(since: Optional[dt.datetime]) -> List[str]:
+    if not LOG_PATH.exists():
+        return []
+    try:
+        with LOG_PATH.open("r", encoding="utf-8", errors="replace") as handle:
+            lines = handle.readlines()[-4000:]
+    except OSError:
+        return []
+    if not since:
+        return [line.rstrip() for line in lines]
+    filtered = []
+    for line in lines:
+        parsed = _parse_log_time(line)
+        if parsed and parsed < since:
+            continue
+        filtered.append(line.rstrip())
+    return filtered
+
+
+def _read_trades(max_rows: int = 50) -> List[str]:
+    if not TRADES_CSV.exists():
+        return []
+    rows = []
+    try:
+        with TRADES_CSV.open("r", encoding="utf-8") as handle:
+            reader = csv.DictReader(handle)
+            for row in reader:
+                rows.append(row)
+    except (OSError, csv.Error):
+        return []
+    rows = rows[-max_rows:]
+    formatted: List[str] = []
+    for row in rows:
+        ts = row.get("ts", "?")
+        action = row.get("action", "?")
+        symbol = row.get("symbol", "?")
+        qty = row.get("qty", "?")
+        price = row.get("price", row.get("px", "?"))
+        components_raw = row.get("decision_components_json")
+        decision_text = _format_decision_components(components_raw)
+        formatted.append(f"{ts} | {action} {symbol} x{qty} @ {price}{decision_text}")
+    return formatted
+
+
+def _format_decision_components(raw: Optional[str]) -> str:
+    if not raw:
+        return ""
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError:
+        return f" | components: {raw}"
+    items = [f"{key}={value}" for key, value in data.items() if key not in {"reasons"}]
+    if "reasons" in data and isinstance(data["reasons"], dict):
+        reasons = ", ".join(f"{k}:{v}" for k, v in data["reasons"].items())
+        items.append(f"reasons=[{reasons}]")
+    return " | " + ", ".join(items)
+
+
+def _parse_log_time(line: str) -> Optional[dt.datetime]:
+    try:
+        prefix = line[:19]
+        return dt.datetime.strptime(prefix, "%Y-%m-%d %H:%M:%S")
+    except (ValueError, IndexError):
+        return None
+
+
+def _format_line(line: str) -> str:
+    if "decision_components_json" in line:
+        try:
+            prefix, json_blob = line.split("decision_components_json=", 1)
+            decision_text = _format_decision_components(json_blob.strip())
+            return f"{prefix.strip()} {decision_text}"
+        except ValueError:
+            return line
+    return line

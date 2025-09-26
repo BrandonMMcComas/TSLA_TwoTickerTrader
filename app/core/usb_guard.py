@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 """
 usb_guard.py — Hotfix v1.4.4
 
@@ -11,9 +12,10 @@ usb_guard.py — Hotfix v1.4.4
 
 from pathlib import Path
 from typing import Dict, Optional, Tuple
-from dotenv import load_dotenv, dotenv_values
 
-from app.config.settings import DEFAULT_USB_KEYS_PATH, DEFAULT_KEYS_USB_PATH, KEYS_ENV_FILENAME
+from dotenv import dotenv_values, load_dotenv
+
+from app.config.settings import DEFAULT_KEYS_USB_PATH, DEFAULT_USB_KEYS_PATH, KEYS_ENV_FILENAME
 
 USB_DEFAULT = DEFAULT_USB_KEYS_PATH
 USB_DEFAULT_ALIAS = DEFAULT_KEYS_USB_PATH  # legacy alias
@@ -36,9 +38,10 @@ def get_keys_dict(path: Optional[str] = None) -> Dict[str, str]:
 
 def read_keys_env(path: Optional[str] = None) -> Tuple[bool, Dict[str, str]]:
     kv = get_keys_dict(path)
-    masked = {}
+    masked: Dict[str, str] = {}
     if not kv:
         return False, masked
+
     masked["Alpaca ID"] = _mask_tail(kv.get("ALPACA_API_KEY_ID", ""))
     masked["Alpaca Secret"] = _mask_tail(kv.get("ALPACA_API_SECRET_KEY", ""))
     if kv.get("OPENAI_API_KEY"):
@@ -47,6 +50,7 @@ def read_keys_env(path: Optional[str] = None) -> Tuple[bool, Dict[str, str]]:
         masked["Google"] = _mask_tail(kv.get("GOOGLE_API_KEY", ""))
     if kv.get("GOOGLE_CSE_ID"):
         masked["CSE"] = _mask_tail(kv.get("GOOGLE_CSE_ID", ""))
+
     ok = bool(kv.get("ALPACA_API_KEY_ID") and kv.get("ALPACA_API_SECRET_KEY"))
     return ok, masked
 

@@ -1,9 +1,9 @@
 from __future__ import annotations
+
 import pandas as pd
-import numpy as np
-import yfinance as yf
-from datetime import datetime, timedelta
 import pytz
+import yfinance as yf
+
 NY = pytz.timezone("America/New_York")
 def _cap_period(interval: str, lookback_days: int) -> str:
     if interval == "1m":

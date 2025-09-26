@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 """
 Unified settings module (Hotfix v1.4.1)
 
@@ -10,6 +11,7 @@ Unified settings module (Hotfix v1.4.1)
 """
 
 from dataclasses import dataclass, field
+
 
 # ---- App metadata ----
 @dataclass(frozen=True)
@@ -66,6 +68,16 @@ GATE_THRESHOLD_DEFAULT = 0.55
 BLEND_W_MODEL = 0.70
 BLEND_W_SENT = 0.30
 
+# ---- Decision Engine knobs (sane, conservative defaults) ----
+GATE_BUFFER_NEAR_COINFLIP = 0.03
+SPREAD_WIDE_BPS_HINT = 50
+GATE_ADJ_SPREAD_WIDE = 0.02
+GATE_ADJ_EXTENDED = 0.02
+VWAP_DISAGREE_BPS = 40
+CONVICTION_DW_VWAP = 0.85
+CONVICTION_DW_WIDE_SPREAD = 0.90
+FLIP_COOLDOWN_SEC = 60
+
 # ---- Sentiment scheduling / retention ----
 SENTIMENT_AM_ET = "06:00"
 SENTIMENT_PM_ET = "18:00"
@@ -107,3 +119,13 @@ class TradingDefaults:
 PBLEND_THRESHOLD_DEFAULT = GATE_THRESHOLD_DEFAULT
 LIVE_TRADING_ONLY = True  # enforce TradingClient(paper=False)
 ONE_POSITION_ONLY = True
+
+# Section 04 aliases for decision engine knobs
+GATE_BUFFER_NEAR_COINFLIP_DEFAULT = GATE_BUFFER_NEAR_COINFLIP
+SPREAD_WIDE_BPS_HINT_DEFAULT = SPREAD_WIDE_BPS_HINT
+GATE_ADJ_SPREAD_WIDE_DEFAULT = GATE_ADJ_SPREAD_WIDE
+GATE_ADJ_EXTENDED_DEFAULT = GATE_ADJ_EXTENDED
+VWAP_DISAGREE_BPS_DEFAULT = VWAP_DISAGREE_BPS
+CONVICTION_DW_VWAP_DEFAULT = CONVICTION_DW_VWAP
+CONVICTION_DW_WIDE_SPREAD_DEFAULT = CONVICTION_DW_WIDE_SPREAD
+FLIP_COOLDOWN_SEC_DEFAULT = FLIP_COOLDOWN_SEC

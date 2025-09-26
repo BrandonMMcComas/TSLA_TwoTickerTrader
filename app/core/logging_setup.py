@@ -1,6 +1,8 @@
 
-import logging, sys, os
+import logging
+import sys
 from pathlib import Path
+
 
 def setup_logging():
     Path("logs").mkdir(exist_ok=True, parents=True)
