@@ -16,41 +16,21 @@ See `app/services/trader.py`, `app/services/pricing.py`, and `app/services/alpac
 
 ---
 
-## Section 05 — GUI Polish, Shortcuts & Icon
+## GUI at a glance
 
-### Dashboard
-- **Trade Gate tile** (green/red) shows p_up / p_blend vs threshold and blocking conditions.
-- **Sparklines**: p_up (last 60), TSLL spread (bps), TSDD spread (bps).
-- **Session pills** & **Extended Hours OK** banner when Pre/After active in-session.
-- **PDT/Cash pill** based on Alpaca account snapshot.
-- **Last sentiment run** time (from `data/sentiment/` file timestamp).
+- **Dashboard** — decision engine card with p_up, sentiment blend, conviction, side badge, spread/VWAP flags, sparkline history, session badges, account tiles (equity, cash, position, P&L), and quick links to review the latest trade in the logs.
+- **Trading** — live TSLL/TSDD quote snapshots, conviction-scaled cash allocation preview, flip cooldown countdown, and engine enable/disable toasts.
+- **Settings** — USB key management plus live sliders for gate threshold, blend weights, coinflip buffer, spread guardrails, flip cooldown, session toggles, and appearance preferences with dark mode + font sizing persisted to `data/ui_state.json`.
+- **Logs** — filterable log tail (level, contains text, since time) with pretty-printed decision components and recent trades.
+- **Train** — non-blocking training launcher with dataset status, progress indicator, and metric summary.
 
-### Settings
-- **USB keys** writer (USB-only).
-- **Gate threshold** slider (0.40–0.70).
-- **Blend weights** (w_model, w_sent) with **Normalize** button.
-- **Session toggles** & **Risk/price controls** (in-memory only; not persisted to disk).
-- **Create Desktop Shortcut** — `TSLA Two-Ticker Trader.lnk` with icon.
+### Keyboard shortcuts
 
-### Trade Control
-- **Start/Stop** (in-memory flag for now; full engine wiring occurs alongside Section 04 backend).
-- **Account snapshot** (equity, settled cash), **holding**, and **chosen limit preview**.
-
-> Per guardrails, only the **USB path** is persisted locally. Keys live only on the USB; other settings are in-memory for the session.
-
-
-### Dashboard — new tiles
-- **TSLA last trade** (auto-updates).
-- **VWAP distance (RTH)** — live basis-point distance of price vs session VWAP.
-
-
----
-
-## Section 06 — QA, Packaging & Final ZIP (+ EXE spec)
-- Verified imports with `tests/test_imports.py` and basic GUI launch.
-- Provided **PyInstaller spec** (`tsla_trader.spec`) with `console=True` and icon; convenience **build_exe.cmd** script.
-- Final **start_app.cmd** launches GUI with console visible.
-- Dashboard now includes **TSLA last trade** and **VWAP distance (RTH)** tiles.
+- `Ctrl+D` — Dashboard
+- `Ctrl+T` — Trading
+- `Ctrl+S` — Settings
+- `Ctrl+L` — Logs
+- `Ctrl+R` — Train
 
 ### Build an EXE (Windows)
 ```

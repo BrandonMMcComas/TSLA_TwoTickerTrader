@@ -4,6 +4,9 @@ import math
 import sys
 from pathlib import Path
 from types import ModuleType
+from typing import Any, cast
+=======
+main
 
 import pytest
 
@@ -21,7 +24,10 @@ for _mod in ("numpy", "pandas", "yfinance", "pytz"):
         sys.modules[_mod] = stub
 
 model_stub = ModuleType("app.services.model")
+cast(Any, model_stub).predict_p_up_latest = lambda _interval: 0.5
+=======
 model_stub.predict_p_up_latest = lambda _interval: 0.5
+main
 sys.modules.setdefault("app.services.model", model_stub)
 
 from app.config import settings
@@ -35,6 +41,26 @@ def _reset_runtime_state(monkeypatch):
     monkeypatch.setattr(state, "gate_threshold", settings.GATE_THRESHOLD_DEFAULT, raising=False)
     monkeypatch.setattr(state, "w_model", settings.BLEND_W_MODEL, raising=False)
     monkeypatch.setattr(state, "w_sent", settings.BLEND_W_SENT, raising=False)
+    monkeypatch.setattr(
+        state,
+        "gate_buffer_near_coinflip",
+        getattr(settings, "GATE_BUFFER_NEAR_COINFLIP", 0.03),
+        raising=False,
+    )
+    monkeypatch.setattr(
+        state,
+        "spread_wide_hint",
+        getattr(settings, "SPREAD_WIDE_BPS_HINT", 50),
+        raising=False,
+    )
+    monkeypatch.setattr(
+        state,
+        "flip_cooldown_sec",
+        getattr(settings, "FLIP_COOLDOWN_SEC", 60),
+        raising=False,
+    )
+=======
+main
 
 
 def _patch_quotes(monkeypatch, bid: float, ask: float, last: float = math.nan):
@@ -53,6 +79,9 @@ def test_decision_balanced_long_tilt(monkeypatch):
     monkeypatch.setattr(state, "gate_threshold", 0.52, raising=False)
     monkeypatch.setattr(state, "w_model", 1.0, raising=False)
     monkeypatch.setattr(state, "w_sent", 0.0, raising=False)
+    monkeypatch.setattr(state, "gate_buffer_near_coinflip", 0.01, raising=False)
+=======
+main
     monkeypatch.setattr(decision_engine, "predict_p_up_latest", lambda interval: 0.52)
     monkeypatch.setattr(decision_engine, "vwap_distance_bps", lambda symbol: 0.0)
     _patch_quotes(monkeypatch, bid=10.0, ask=10.01)
