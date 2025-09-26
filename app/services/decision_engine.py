@@ -1,4 +1,5 @@
 from __future__ import annotations
+"""Deterministic decision engine for TSLA pair trading."""
 
 import math
 from dataclasses import dataclass
@@ -10,6 +11,9 @@ from app.services.model import predict_p_up_latest
 from app.services.market_data import get_quote
 from app.services.pricing import spread_bps
 from app.services.live_vwap import vwap_distance_bps
+
+
+ReasonsDict = Dict[str, float | str | bool]
 
 
 @dataclass
@@ -32,7 +36,7 @@ class DecisionResult:
     spread_bps_tsll: float
     spread_bps_tsdd: float
     vwap_bps_tsla: Optional[float]
-    reasons: Dict[str, float | str | bool]
+    reasons: ReasonsDict
 
 
 def _safe_weighted_blend(p_up: float, p_sent: float) -> tuple[float, float, float]:
@@ -82,19 +86,19 @@ def decide(inputs: DecisionInputs) -> DecisionResult:
         sp_tsdd = float("inf")
 
     max_spread = max(sp_tsll, sp_tsdd)
-    spread_max_block = float(getattr(cfg, "SPREAD_MAX_BPS", 60))  # block hard above this
+    spread_max_block = float(getattr(cfg, "SPREAD_MAX_BPS", 60))  # hard block above this
     spread_wide_hint = float(getattr(cfg, "SPREAD_WIDE_BPS_HINT", 50))
 
-    # --- VWAP context (RTH only typically) ---
+    # --- VWAP context (RTH only) ---
     vwap_bps = None
     try:
         if inputs.session_rth:
-            vwap_bps = float(vwap_distance_bps("TSLA"))
+            vwap_bps = float(vwap_distance_bps(getattr(cfg, "TSLA_SYMBOL", "TSLA")))
     except Exception:
         vwap_bps = None
 
     # --- Gate base & dynamic adjustments ---
-    gate_default = float(getattr(cfg, "GATE_THRESHOLD_DEFAULT", getattr(state, "gate_threshold", 0.55)))
+    gate_default = float(getattr(cfg, "GATE_THRESHOLD_DEFAULT", 0.55))
     base_gate = float(getattr(state, "gate_threshold", gate_default))
     gate = base_gate
 
@@ -132,7 +136,8 @@ def decide(inputs: DecisionInputs) -> DecisionResult:
     disagree_down = p_blend < 0.5 and (vwap_bps is not None) and (vwap_bps > vwap_disagree_bps)
     vwap_disagree = bool(disagree_up or disagree_down)
     if vwap_disagree:
-        gate += 0.02
+        # Use same knob as extended-hours for a small nudge
+        gate += float(getattr(cfg, "GATE_ADJ_EXTENDED", 0.02))
 
     # Clamp gate to a safe band
     gate = _clamp(gate, 0.45, 0.70)
@@ -166,7 +171,7 @@ def decide(inputs: DecisionInputs) -> DecisionResult:
 
     # --- Conviction ---
     denom = max(1e-6, abs(gate - 0.5))
-    conviction = abs(p_blend - 0.5) / denom  # 1.0 when p_blend hits the gate exactly
+    conviction = abs(p_blend - 0.5) / denom
     conviction = _clamp(conviction, 0.0, 1.0)
 
     # Down-weights
@@ -177,7 +182,7 @@ def decide(inputs: DecisionInputs) -> DecisionResult:
     conviction = _clamp(conviction, 0.0, 1.0)
 
     # --- Done ---
-    reasons: Dict[str, float | str | bool] = {
+    reasons: ReasonsDict = {
         "base_gate": base_gate,
         "gate_after_adjustments": gate,
         "w_model": w_model,

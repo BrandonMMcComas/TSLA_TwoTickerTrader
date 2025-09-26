@@ -14,8 +14,10 @@ import pytz
 from alpaca.trading.enums import OrderSide, OrderStatus, TimeInForce
 
 from app.config import settings
+from app.core.runtime_state import state
 from app.services import pricing
 from app.services.alpaca_client import AlpacaService
+from app.services.decision_engine import DecisionInputs, DecisionResult, decide
 
 # NOTE: We assume a MarketData service exists with get_quote(symbol) -> dict(bid, ask, last, ts).
 Quote = Dict[str, Any]
@@ -40,6 +42,56 @@ def get_quote(symbol: str) -> Quote:
 
 NY = pytz.timezone(settings.TZ)
 
+
+def _load_latest_sentiment_score(sentiment_dir: Path) -> Optional[float]:
+    if not sentiment_dir.exists():
+        return None
+
+    try:
+        files = sorted(sentiment_dir.glob("*.json"), key=lambda p: p.stat().st_mtime, reverse=True)
+    except Exception:
+        files = []
+
+    if not files:
+        return None
+
+    latest_file = files[0]
+    try:
+        with latest_file.open("r", encoding="utf-8") as f:
+            payload = json.load(f)
+        score_raw = payload.get("daily_score")
+        score = float(score_raw)
+    except Exception:
+        return None
+
+    if math.isnan(score):
+        return None
+
+    return float(max(-1.0, min(1.0, score)))
+
+
+def _conviction_to_cash(settled_cash: float, conviction: float) -> float:
+    conv = max(0.0, min(1.0, conviction))
+    cash = settled_cash * (0.50 + 0.50 * conv)
+    return max(0.0, min(settled_cash, cash))
+
+
+def _decision_components_payload(result: DecisionResult, cash_to_use: float) -> Dict[str, Any]:
+    return {
+        "side": result.side,
+        "conviction": result.conviction,
+        "gate": result.gate,
+        "p_up": result.p_up,
+        "p_sent": result.p_sent,
+        "p_blend": result.p_blend,
+        "spread_bps_tsll": result.spread_bps_tsll,
+        "spread_bps_tsdd": result.spread_bps_tsdd,
+        "vwap_bps_tsla": result.vwap_bps_tsla,
+        "cash_to_use": cash_to_use,
+        "reasons": result.reasons,
+    }
+
+
 @dataclass
 class ReplaceState:
     last_ts: float = 0.0
@@ -61,6 +113,7 @@ class TraderEngine:
         self.session = settings.SessionToggles()
         self._replace_state: Dict[str, ReplaceState] = {}  # order_id -> state
         self._peaks: Dict[str, float] = {}
+        self._last_flip_ts: float = 0.0
         self._ensure_csv()
 
     # --------------- Public control ---------------
@@ -86,7 +139,8 @@ class TraderEngine:
 
     def process_once(self):
         # Check sessions and account status
-        if not self._session_allowed():
+        pre_session, rth_session, after_session = self._session_flags()
+        if not (pre_session or rth_session or after_session):
             return
 
         acct = self.alpaca.get_account()
@@ -123,40 +177,72 @@ class TraderEngine:
         spread_tsll = pricing.spread_bps(q_tsll["bid"], q_tsll["ask"])
         spread_tsdd = pricing.spread_bps(q_tsdd["bid"], q_tsdd["ask"])
         if max(spread_tsll, spread_tsdd) > self.risk.spread_max_bps:
+            if holding:
+                self._manage_position(holding)
             return
 
-        # Decide desired side using external gate signal (Section 03 provides it).
-        # Here, we expect someone to set the 'target_side' externally via GUI or a service.
-        target_side = self._decide_target_side_fallback()
+        sentiment_dir = Path("data") / "sentiment"
+        sentiment_score = _load_latest_sentiment_score(sentiment_dir)
+        decision_inputs = DecisionInputs(
+            interval=state.interval,
+            last_sentiment_daily=sentiment_score,
+            session_pre=pre_session,
+            session_rth=rth_session,
+            session_after=after_session,
+        )
+        decision_result = decide(decision_inputs)
+        cash_to_use = _conviction_to_cash(settled_cash, decision_result.conviction)
+        decision_components = _decision_components_payload(decision_result, cash_to_use)
+
+        if decision_result.side == "HOLD":
+            if holding:
+                self._manage_position(holding, decision_components)
+            return
+
+        target_side = decision_result.side
 
         # Enforce one-position policy and flip if needed
         if holding and holding != target_side:
+            now_ts = time.time()
+            if now_ts - self._last_flip_ts < settings.FLIP_COOLDOWN_SEC:
+                self._manage_position(holding, decision_components)
+                return
             # Close current position then open opposite (flip)
-            self._close_position_limit(holding)
-            # Optional cooldown can be applied here (default 0)
-            self._open_side(target_side, settled_cash)
+            self._close_position_limit(holding, decision_components)
+            self._open_side(target_side, cash_to_use, decision_components)
+            self._last_flip_ts = now_ts
         elif not holding:
             # Open new position
-            self._open_side(target_side, settled_cash)
+            self._open_side(target_side, cash_to_use, decision_components)
+            self._last_flip_ts = time.time()
         else:
             # Manage exits (P80 TP & trailing stop-limit maintenance)
-            self._manage_position(holding)
+            self._manage_position(holding, decision_components)
 
     # --------------- Helpers ---------------
-    def _decide_target_side_fallback(self) -> str:
-        """
-        Placeholder: in Section 03 the p_blend gate sets desired side.
-        Here we just use TSLL as a default to keep engine sane if not wired.
-        """
-        return settings.TSLL_SYMBOL
-
     def _session_allowed(self) -> bool:
+        pre, rth, after = self._session_flags()
+        return pre or rth or after
+
+    def _session_flags(self) -> tuple[bool, bool, bool]:
         now = datetime.now(NY)
         tod = now.time()
-        pre = self.session.pre and (tod >= datetime.strptime("04:00", "%H:%M").time()) and (tod < datetime.strptime("09:30", "%H:%M").time())
-        rth = self.session.rth and (tod >= datetime.strptime("09:30", "%H:%M").time()) and (tod < datetime.strptime("16:00", "%H:%M").time())
-        after = self.session.after and (tod >= datetime.strptime("16:00", "%H:%M").time()) and (tod < datetime.strptime("20:00", "%H:%M").time())
-        return pre or rth or after
+        pre = self.session.pre and (
+            tod >= datetime.strptime("04:00", "%H:%M").time()
+        ) and (
+            tod < datetime.strptime("09:30", "%H:%M").time()
+        )
+        rth = self.session.rth and (
+            tod >= datetime.strptime("09:30", "%H:%M").time()
+        ) and (
+            tod < datetime.strptime("16:00", "%H:%M").time()
+        )
+        after = self.session.after and (
+            tod >= datetime.strptime("16:00", "%H:%M").time()
+        ) and (
+            tod < datetime.strptime("20:00", "%H:%M").time()
+        )
+        return pre, rth, after
 
     def _is_margin_account(self, acct) -> bool:
         # Heuristic: daytrading_buying_power exists/ > 0 or pattern_day_trader field present.
@@ -170,13 +256,18 @@ class TraderEngine:
         else:
             return settings.TSDD_SYMBOL, OrderSide.BUY, settings.TSLL_SYMBOL
 
-    def _open_side(self, desired_symbol: str, settled_cash: float):
+    def _open_side(
+        self,
+        desired_symbol: str,
+        cash_to_use: float,
+        decision_components: Optional[Dict[str, Any]] = None,
+    ):
         sym, side, other = self._choose_symbols(desired_symbol)
         q = get_quote(sym)
         entry_limit = pricing.compute_entry_limit(
             "BUY", q["bid"], q["ask"], q["last"], self.risk.slippage_bps
         )
-        qty = math.floor(settled_cash / entry_limit)
+        qty = math.floor(cash_to_use / entry_limit)
         if qty < 1:
             return
 
@@ -209,9 +300,13 @@ class TraderEngine:
             except Exception as e:
                 print(f"[TraderEngine] stop-limit submit failed (will continue RTH-only): {e}")
 
-        self._log_trade("ENTRY", sym, qty, entry_limit, note="open_side")
+        self._log_trade("ENTRY", sym, qty, entry_limit, note="open_side", decision_components=decision_components)
 
-    def _close_position_limit(self, symbol: str):
+    def _close_position_limit(
+        self,
+        symbol: str,
+        decision_components: Optional[Dict[str, Any]] = None,
+    ):
         pos = self.alpaca.get_position(symbol)
         if not pos:
             return
@@ -231,9 +326,13 @@ class TraderEngine:
             )
             self._manage_open_limit(order.id, symbol, "SELL")
 
-        self._log_trade("EXIT", symbol, qty, limit_px, note="flip_close")
+        self._log_trade("EXIT", symbol, qty, limit_px, note="flip_close", decision_components=decision_components)
 
-    def _manage_position(self, symbol: str):
+    def _manage_position(
+        self,
+        symbol: str,
+        decision_components: Optional[Dict[str, Any]] = None,
+    ):
         # Track P80 take-profit using current vs peak
         pos = self.alpaca.get_position(symbol)
         if not pos:
@@ -257,7 +356,14 @@ class TraderEngine:
                 symbol=symbol, qty=qty, side=OrderSide.SELL, limit_price=limit_px, tif=TimeInForce.DAY, extended_hours=False
             )
             # No flip here; flip policy is handled by outer signal change
-            self._log_trade("TP80_EXIT", symbol, qty, limit_px, note=f"avg={avg},peak={peak},p80={p80}")
+            self._log_trade(
+                "TP80_EXIT",
+                symbol,
+                qty,
+                limit_px,
+                note=f"avg={avg},peak={peak},p80={p80}",
+                decision_components=decision_components,
+            )
 
     def _manage_open_limit(self, order_id: str, symbol: str, side_txt: str):
         # Replace throttle while order is open during RTH
@@ -335,12 +441,21 @@ class TraderEngine:
                 w.writerow(["ts","action","symbol","qty","px","entry_limit","exit_limit","stop_limit","cash_before","cash_after",
                             "prob_up","sentiment","p80_threshold","session","slippage_bps_used","spread_bps","decision_components_json","note"])
 
-    def _log_trade(self, action: str, symbol: str, qty: float, px: float, note: str = ""):
+    def _log_trade(
+        self,
+        action: str,
+        symbol: str,
+        qty: float,
+        px: float,
+        note: str = "",
+        decision_components: Optional[Dict[str, Any]] = None,
+    ):
         ts = datetime.now(NY).isoformat()
+        decision_json = json.dumps(decision_components or {})
         with open(self.trades_csv, "a", newline="") as f:
             w = csv.writer(f)
             w.writerow([ts, action, symbol, qty, px, "", "", "", "", "", "", "", "", self._session_str(),
-                        self.risk.slippage_bps, "", json.dumps({}), note])
+                        self.risk.slippage_bps, "", decision_json, note])
 
     def _session_str(self) -> str:
         now = datetime.now(NY).time()
