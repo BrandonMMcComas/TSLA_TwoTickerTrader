@@ -1,4 +1,3 @@
-from __future__ import annotations
 """
 usb_guard.py — Hotfix v1.4.4
 
@@ -9,18 +8,27 @@ usb_guard.py — Hotfix v1.4.4
 - Secrets remain USB-only.
 """
 
+from __future__ import annotations
+
 from pathlib import Path
 from typing import Dict, Optional, Tuple
-from dotenv import load_dotenv, dotenv_values
 
-from app.config.settings import DEFAULT_USB_KEYS_PATH, DEFAULT_KEYS_USB_PATH, KEYS_ENV_FILENAME
+from dotenv import dotenv_values, load_dotenv
+
+from app.config.settings import (
+    DEFAULT_KEYS_USB_PATH,
+    DEFAULT_USB_KEYS_PATH,
+    KEYS_ENV_FILENAME,
+)
 
 USB_DEFAULT = DEFAULT_USB_KEYS_PATH
 USB_DEFAULT_ALIAS = DEFAULT_KEYS_USB_PATH  # legacy alias
 
+
 def _keys_file(path: Optional[str] = None) -> Path:
     base = Path(path or USB_DEFAULT)
     return base / KEYS_ENV_FILENAME
+
 
 def _mask_tail(val: str, tail: int = 4) -> str:
     if not val:
@@ -28,15 +36,17 @@ def _mask_tail(val: str, tail: int = 4) -> str:
     s = str(val)
     return f"••••{s[-tail:]}" if len(s) >= tail else "••••"
 
+
 def get_keys_dict(path: Optional[str] = None) -> Dict[str, str]:
     p = _keys_file(path)
     if not p.exists():
         return {}
     return dotenv_values(p) or {}
 
+
 def read_keys_env(path: Optional[str] = None) -> Tuple[bool, Dict[str, str]]:
     kv = get_keys_dict(path)
-    masked = {}
+    masked: Dict[str, str] = {}
     if not kv:
         return False, masked
     masked["Alpaca ID"] = _mask_tail(kv.get("ALPACA_API_KEY_ID", ""))
@@ -49,6 +59,7 @@ def read_keys_env(path: Optional[str] = None) -> Tuple[bool, Dict[str, str]]:
         masked["CSE"] = _mask_tail(kv.get("GOOGLE_CSE_ID", ""))
     ok = bool(kv.get("ALPACA_API_KEY_ID") and kv.get("ALPACA_API_SECRET_KEY"))
     return ok, masked
+
 
 def write_keys_env(path: Optional[str], kv: Dict[str, str]) -> bool:
     if not path:
@@ -63,11 +74,18 @@ def write_keys_env(path: Optional[str], kv: Dict[str, str]) -> bool:
             merged[k] = str(v).strip()
 
     lines = []
-    for k in ("ALPACA_API_KEY_ID","ALPACA_API_SECRET_KEY","OPENAI_API_KEY","GOOGLE_API_KEY","GOOGLE_CSE_ID"):
+    for k in (
+        "ALPACA_API_KEY_ID",
+        "ALPACA_API_SECRET_KEY",
+        "OPENAI_API_KEY",
+        "GOOGLE_API_KEY",
+        "GOOGLE_CSE_ID",
+    ):
         if k in merged:
             lines.append(f"{k}={merged[k]}\n")
     p.write_text("".join(lines), encoding="utf-8")
     return True
+
 
 def load_keys_from_usb(path: Optional[str] = None) -> bool:
     p = _keys_file(path)
@@ -75,6 +93,7 @@ def load_keys_from_usb(path: Optional[str] = None) -> bool:
         return False
     load_dotenv(p, override=True)
     return True
+
 
 def keys_present(path: Optional[str] = None) -> bool:
     kv = get_keys_dict(path)

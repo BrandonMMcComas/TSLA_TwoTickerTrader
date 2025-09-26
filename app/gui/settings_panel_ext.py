@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """
 settings_panel_ext.py — adds a "Run sentiment now" button to the Settings panel
 without touching the original file. We subclass and monkey-patch the exported
@@ -14,13 +12,22 @@ UI:
 Runs in a background QThread to avoid blocking the GUI.
 """
 
-from PySide6.QtWidgets import (
-    QGroupBox, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QComboBox, QCheckBox, QWidget
-)
+from __future__ import annotations
+
 from PySide6.QtCore import QObject, QThread, Signal, Slot
+from PySide6.QtWidgets import (
+    QCheckBox,
+    QComboBox,
+    QGroupBox,
+    QHBoxLayout,
+    QLabel,
+    QPushButton,
+    QVBoxLayout,
+)
 
 # Import the original SettingsPanel to subclass
 from app.gui import settings_panel as sp
+
 
 class _SentimentWorker(QObject):
     finished = Signal(bool, str)
@@ -34,9 +41,18 @@ class _SentimentWorker(QObject):
     def run(self):
         try:
             from app.tools.run_sentiment_once import run_once
-            mode = "am" if self.mode.lower() == "am" else ("pm" if self.mode.lower() == "pm" else "am_or_pm_auto")
+
+            mode = (
+                "am"
+                if self.mode.lower() == "am"
+                else ("pm" if self.mode.lower() == "pm" else "am_or_pm_auto")
+            )
             # Map "auto" string to run_once signature
-            rk = "am" if mode == "am" else ("pm" if mode == "pm" else ("am" if _is_am_now_et() else "pm"))
+            rk = (
+                "am"
+                if mode == "am"
+                else ("pm" if mode == "pm" else ("am" if _is_am_now_et() else "pm"))
+            )
             p = run_once(rk, keep_weekends=self.keep_weekends)
             self.finished.emit(True, f"Sentiment {rk.upper()} complete → {p}")
         except SystemExit as e:
@@ -45,13 +61,18 @@ class _SentimentWorker(QObject):
         except Exception as e:
             self.finished.emit(False, f"{e}")
 
+
 def _is_am_now_et() -> bool:
     try:
-        import datetime, pytz
+        import datetime
+
+        import pytz
+
         NY = pytz.timezone("America/New_York")
         return datetime.datetime.now(NY).hour < 12
     except Exception:
         return True
+
 
 class ExtendedSettingsPanel(sp.SettingsPanel):
     def __init__(self, *args, **kwargs):
@@ -111,5 +132,6 @@ class ExtendedSettingsPanel(sp.SettingsPanel):
         self._status.setText(("✅ " if ok else "⚠️ ") + msg)
         self._btn.setEnabled(True)
 
+
 # Monkey-patch: replace the exported SettingsPanel with our extended version
-sp.SettingsPanel = ExtendedSettingsPanel
+setattr(sp, "SettingsPanel", ExtendedSettingsPanel)

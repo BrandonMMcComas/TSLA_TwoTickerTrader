@@ -1,16 +1,14 @@
-
-import time
-from typing import Optional, List, Dict, Any, Union
+from typing import List, Optional, Union
 
 from alpaca.trading.client import TradingClient
-from alpaca.trading.requests import (
-    LimitOrderRequest,
-    StopLimitOrderRequest,
-    ReplaceOrderRequest,
-    GetOrdersRequest,
-)
-from alpaca.trading.enums import OrderSide, TimeInForce, OrderStatus
+from alpaca.trading.enums import OrderSide, OrderStatus, TimeInForce
 from alpaca.trading.models import Order as AlpacaOrder
+from alpaca.trading.requests import (
+    GetOrdersRequest,
+    LimitOrderRequest,
+    ReplaceOrderRequest,
+    StopLimitOrderRequest,
+)
 
 
 class AlpacaService:
@@ -19,7 +17,13 @@ class AlpacaService:
     Never sets paper=True.
     """
 
-    def __init__(self, api_key: Optional[str] = None, api_secret: Optional[str] = None, *, raw_data: bool = False):
+    def __init__(
+        self,
+        api_key: Optional[str] = None,
+        api_secret: Optional[str] = None,
+        *,
+        raw_data: bool = False,
+    ):
         # paper=False enforces LIVE per spec
         self.client = TradingClient(api_key, api_secret, paper=False, raw_data=raw_data)
 
@@ -94,7 +98,12 @@ class AlpacaService:
         params = GetOrdersRequest(status=OrderStatus.OPEN)
         orders = self.client.get_orders(filter=params)
         if symbol:
-            orders = [o for o in orders if (getattr(o, "symbol", None) or getattr(o, "asset_symbol", None)) == symbol]
+            orders = [
+                o
+                for o in orders
+                if (getattr(o, "symbol", None) or getattr(o, "asset_symbol", None))
+                == symbol
+            ]
         return orders
 
     def get_order(self, order_id: str) -> AlpacaOrder:

@@ -1,5 +1,7 @@
 from __future__ import annotations
-from dataclasses import dataclass, field
+
+from dataclasses import dataclass
+
 
 @dataclass
 class RuntimeState:
@@ -19,7 +21,9 @@ class RuntimeState:
     interval: str = "5m"  # for model p_up polling
     lookback_days: int = 30
 
+
 state = RuntimeState()
+
 
 def normalize_weights():
     s = state.w_model + state.w_sent
