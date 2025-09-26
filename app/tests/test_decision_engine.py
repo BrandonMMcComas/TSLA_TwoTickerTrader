@@ -5,6 +5,8 @@ import sys
 from pathlib import Path
 from types import ModuleType
 from typing import Any, cast
+=======
+main
 
 import pytest
 
@@ -23,6 +25,9 @@ for _mod in ("numpy", "pandas", "yfinance", "pytz"):
 
 model_stub = ModuleType("app.services.model")
 cast(Any, model_stub).predict_p_up_latest = lambda _interval: 0.5
+=======
+model_stub.predict_p_up_latest = lambda _interval: 0.5
+main
 sys.modules.setdefault("app.services.model", model_stub)
 
 from app.config import settings
@@ -54,6 +59,8 @@ def _reset_runtime_state(monkeypatch):
         getattr(settings, "FLIP_COOLDOWN_SEC", 60),
         raising=False,
     )
+=======
+main
 
 
 def _patch_quotes(monkeypatch, bid: float, ask: float, last: float = math.nan):
@@ -73,6 +80,8 @@ def test_decision_balanced_long_tilt(monkeypatch):
     monkeypatch.setattr(state, "w_model", 1.0, raising=False)
     monkeypatch.setattr(state, "w_sent", 0.0, raising=False)
     monkeypatch.setattr(state, "gate_buffer_near_coinflip", 0.01, raising=False)
+=======
+main
     monkeypatch.setattr(decision_engine, "predict_p_up_latest", lambda interval: 0.52)
     monkeypatch.setattr(decision_engine, "vwap_distance_bps", lambda symbol: 0.0)
     _patch_quotes(monkeypatch, bid=10.0, ask=10.01)

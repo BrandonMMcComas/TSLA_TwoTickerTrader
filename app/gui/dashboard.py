@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+
 """Decision-focused dashboard with defensive background refreshers."""
 
 import csv
@@ -26,15 +27,48 @@ from PySide6.QtWidgets import (
 )
 
 from app.config import settings as cfg
+=======
+import datetime
+import glob
+import json
+import os
+from typing import List
+
+import pytz
+from dotenv import dotenv_values
+from PySide6.QtCore import QTimer
+from PySide6.QtWidgets import QFrame, QHBoxLayout, QLabel, QVBoxLayout, QWidget
+
+main
 from app.config.paths import DATA_DIR
 from app.core.app_config import AppConfig
 from app.core.runtime_state import state
 from app.gui.sparkline import Sparkline
 from app.services.alpaca_client import AlpacaService
 from app.services.decision_engine import DecisionInputs, DecisionResult, decide
+=======
+from app.services.live_vwap import vwap_distance_bps
+from app.services.market_data import get_quote
+from app.services.model import predict_p_up_latest
+from app.services.pricing import spread_bps
+main
 
 NY = pytz.timezone(cfg.TZ)
 
+=======
+def _read_daily_sentiment_score() -> float | None:
+    sdir = DATA_DIR / "sentiment"
+    files = sorted(glob.glob(os.path.join(sdir, "*.json")))
+    if not files:
+        return None
+    latest = files[-1]
+    try:
+        with open(latest, "r", encoding="utf-8") as f:
+            doc = json.load(f)
+        return float(doc.get("daily_score"))
+    except Exception:
+        return None
+main
 
 @dataclass
 class DashboardMetrics:
@@ -64,8 +98,72 @@ class DecisionWorker(QObject):
         self.sentiment_dir = sentiment_dir
         self.session_flags = session_flags
 
+
     @Slot()
     def run(self) -> None:
+=======
+        v = QVBoxLayout(self)
+
+        # Trade Gate tile
+        self.gate_tile = QFrame()
+        self.gate_tile.setFrameShape(QFrame.Box)
+        self.gate_tile.setStyleSheet("background:#f7f7f7; padding:10px;")
+        g = QVBoxLayout(self.gate_tile)
+        self.lbl_gate = QLabel("Trade Gate: (no signal yet)")
+        g.addWidget(self.lbl_gate)
+        v.addWidget(self.gate_tile)
+        tiles = QHBoxLayout()
+        self.lbl_tsla_last = QLabel("TSLA last: (loading)")
+        self.lbl_vwap = QLabel("VWAP dist: (N/A)")
+        tiles.addWidget(self.lbl_tsla_last); tiles.addStretch(1); tiles.addWidget(self.lbl_vwap)
+        v.addLayout(tiles)
+
+        # Row: p_up sparkline + spread sparklines
+        row = QHBoxLayout()
+        col1 = QVBoxLayout()
+        col1.addWidget(QLabel("p_up (last 60)"))
+        self.sp_pup = Sparkline(); col1.addWidget(self.sp_pup)
+        row.addLayout(col1)
+
+        col2 = QVBoxLayout()
+        col2.addWidget(QLabel("TSLL spread (bps, last 60)"))
+        self.sp_tsll = Sparkline(); col2.addWidget(self.sp_tsll)
+        row.addLayout(col2)
+
+        col3 = QVBoxLayout()
+        col3.addWidget(QLabel("TSDD spread (bps, last 60)"))
+        self.sp_tsdd = Sparkline(); col3.addWidget(self.sp_tsdd)
+        row.addLayout(col3)
+
+        v.addLayout(row)
+
+        # Row: session banners + PDT/Cash info
+        info = QHBoxLayout()
+        self.lbl_session = QLabel("Sessions: Pre ON | RTH ON | After OFF")
+        self.lbl_ext = QLabel("Extended Hours OK")
+        self.lbl_ext.setStyleSheet("background:#e6ffed; border:1px solid #7fd18b; color:#05400A; padding:4px;")
+        self.lbl_pdt = QLabel("PDT/Cash: (fetching)")
+        info.addWidget(self.lbl_session); info.addStretch(1); info.addWidget(self.lbl_ext); info.addStretch(1); info.addWidget(self.lbl_pdt)
+        v.addLayout(info)
+
+        # Last sentiment run
+        self.lbl_sent = QLabel("Last sentiment run: (check Section 02 scheduler)")
+        v.addWidget(self.lbl_sent)
+
+        # Timer storage
+        self._pup_vals: List[float] = []
+        self._sp_tsll_vals: List[float] = []
+        self._sp_tsdd_vals: List[float] = []
+
+        # Timers
+        self.timer_fast = QTimer(self); self.timer_fast.timeout.connect(self._tick_fast); self.timer_fast.start(4000)
+        self.timer_slow = QTimer(self); self.timer_slow.timeout.connect(self._tick_slow); self.timer_slow.start(30000)
+        self._tick_fast(); self._tick_slow()
+
+    def _tick_fast(self):
+        # TSLA last
+        q_tsla = get_quote("TSLA")
+main
         try:
             sentiment = _read_latest_sentiment(self.sentiment_dir)
             decision_inputs = DecisionInputs(

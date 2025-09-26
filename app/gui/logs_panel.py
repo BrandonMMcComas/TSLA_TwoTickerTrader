@@ -1,5 +1,11 @@
 from __future__ import annotations
 
+=======
+
+"""
+logs_panel.py — Hotfix v1.4.5
+main
+
 """Structured log viewer with filters and decision-component highlighting."""
 
 import csv
@@ -7,7 +13,6 @@ import datetime as dt
 import json
 from dataclasses import dataclass
 from typing import List, Optional
-
 from PySide6.QtCore import QDateTime, QObject, QThread, QTimer, Signal, Slot
 from PySide6.QtWidgets import (
     QComboBox,
@@ -18,6 +23,19 @@ from PySide6.QtWidgets import (
     QLineEdit,
     QPlainTextEdit,
     QPushButton,
+=======
+import os
+
+from PySide6.QtCore import QTimer
+from PySide6.QtGui import QTextCursor
+from PySide6.QtWidgets import (
+    QHBoxLayout,
+    QLabel,
+    QPlainTextEdit,
+    QPushButton,
+    QTableWidget,
+    QTableWidgetItem,
+main
     QVBoxLayout,
     QWidget,
 )

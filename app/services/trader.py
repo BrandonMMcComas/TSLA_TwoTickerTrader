@@ -204,8 +204,12 @@ class TraderEngine:
         # Enforce one-position policy and flip if needed
         if holding and holding != target_side:
             now_ts = time.time()
+
             cooldown = getattr(state, "flip_cooldown_sec", settings.FLIP_COOLDOWN_SEC)
             if now_ts - self._last_flip_ts < cooldown:
+=======
+            if now_ts - self._last_flip_ts < settings.FLIP_COOLDOWN_SEC:
+main
                 self._manage_position(holding, decision_components)
                 return
             # Close current position then open opposite (flip)

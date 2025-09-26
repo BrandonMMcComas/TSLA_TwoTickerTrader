@@ -10,6 +10,14 @@ from PySide6.QtWidgets import (
     QComboBox,
     QGridLayout,
     QGroupBox,
+=======
+import os
+
+from PySide6.QtCore import Qt
+from PySide6.QtWidgets import (
+    QCheckBox,
+    QFileDialog,
+main
     QHBoxLayout,
     QLabel,
     QLineEdit,
@@ -24,7 +32,10 @@ from app.config.paths import ICONS_DIR
 from app.core.app_config import AppConfig
 from app.core.runtime_state import normalize_weights, state
 from app.core.usb_guard import write_keys_env
+
 from app.gui.ui_state import UIState, save_ui_state
+=======
+main
 from app.tools.create_shortcut import create_desktop_shortcut
 
 
@@ -331,6 +342,24 @@ class SettingsPanel(QWidget):
         self._persist()
         self.appearance_changed.emit(self._ui_state.dark_mode, self._ui_state.font_size)
 
+
     def _persist(self) -> None:
         save_ui_state(self._ui_state)
         self.ui_state_synced.emit(self._ui_state)
+=======
+    def _risk_change(self, _):
+        state.slippage_bps = self.sp_slip.value()
+        state.spread_max_bps = self.sp_spread.value()
+        state.stop_limit_offset_bps = self.sp_stoplim.value()
+
+    def _make_shortcut(self):
+        try:
+            target = os.path.abspath("start_app.cmd")
+            desktop = os.path.join(os.path.expanduser("~"), "Desktop")
+            shortcut_path = os.path.join(desktop, "TSLA Two-Ticker Trader.lnk")
+            icon = str(ICONS_DIR / "tesla_coil.ico")
+            create_desktop_shortcut(target, shortcut_path, icon)
+        except Exception:
+            # Soft failure; avoid crashing Settings UI
+            pass
+main

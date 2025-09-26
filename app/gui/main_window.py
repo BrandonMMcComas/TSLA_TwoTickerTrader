@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+
 """Main window wiring sidebar navigation and page integration."""
 
 from PySide6.QtCore import Qt, QTimer
@@ -15,16 +16,25 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
+=======
+from PySide6.QtCore import Qt, QTimer
+from PySide6.QtWidgets import QApplication, QLabel, QMainWindow, QTabWidget, QVBoxLayout, QWidget
+main
 
 from app.core.app_config import AppConfig
 from app.core.runtime_state import state
 from app.core.usb_guard import read_keys_env
 from app.gui.dashboard import Dashboard, DashboardMetrics
+=======
+from app.gui.dashboard import Dashboard
+main
 from app.gui.logs_panel import LogsPanel
 from app.gui.settings_panel import SettingsPanel
 from app.gui.trade_control import TradeControl
 from app.gui.train_panel import TrainPanel
 from app.gui.ui_state import UIState, load_ui_state
+=======
+main
 
 
 class MainWindow(QMainWindow):

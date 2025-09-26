@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+
 """Interactive trading controls with live quote snapshots."""
 
 import time
@@ -18,6 +19,14 @@ from PySide6.QtWidgets import (
 )
 
 from app.config import settings as cfg
+=======
+import os
+
+from dotenv import dotenv_values
+from PySide6.QtCore import QTimer
+from PySide6.QtWidgets import QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget
+
+main
 from app.core.app_config import AppConfig
 from app.core.runtime_state import state
 from app.gui.dashboard import DashboardMetrics
@@ -59,6 +68,10 @@ class QuoteWorker(QObject):
             except Exception:
                 payload[symbol] = QuoteSnapshot()
         self.finished.emit(payload)
+=======
+from app.services.model import predict_p_up_latest
+from app.services.pricing import compute_entry_limit
+main
 
 
 class TradeControl(QWidget):
