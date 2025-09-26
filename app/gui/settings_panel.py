@@ -1,12 +1,27 @@
 from __future__ import annotations
-from PySide6.QtWidgets import QWidget, QLabel, QVBoxLayout, QHBoxLayout, QLineEdit, QPushButton, QFileDialog, QCheckBox, QSlider, QSpinBox
+
+import os
+
 from PySide6.QtCore import Qt
-from app.core.app_config import AppConfig
-from app.core.usb_guard import write_keys_env
-from app.core.runtime_state import state, normalize_weights
-from app.tools.create_shortcut import create_desktop_shortcut
+from PySide6.QtWidgets import (
+    QCheckBox,
+    QFileDialog,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QPushButton,
+    QSlider,
+    QSpinBox,
+    QVBoxLayout,
+    QWidget,
+)
+
 from app.config.paths import ICONS_DIR
-import os, sys
+from app.core.app_config import AppConfig
+from app.core.runtime_state import normalize_weights, state
+from app.core.usb_guard import write_keys_env
+from app.tools.create_shortcut import create_desktop_shortcut
+
 
 class SettingsPanel(QWidget):
     def __init__(self, config: AppConfig, on_path_changed=None) -> None:
@@ -157,6 +172,6 @@ class SettingsPanel(QWidget):
             shortcut_path = os.path.join(desktop, "TSLA Two-Ticker Trader.lnk")
             icon = str(ICONS_DIR / "tesla_coil.ico")
             create_desktop_shortcut(target, shortcut_path, icon)
-        except Exception as e:
+        except Exception:
             # Soft failure; avoid crashing Settings UI
             pass

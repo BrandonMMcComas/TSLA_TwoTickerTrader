@@ -1,3 +1,4 @@
+from __future__ import annotations
 
 import csv
 import json
@@ -5,26 +6,37 @@ import math
 import threading
 import time
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
-from typing import Optional, Dict, Any
+from typing import Any, Callable, Dict, Optional, cast
 
 import pytz
-
-from alpaca.trading.enums import OrderSide, TimeInForce, OrderStatus
+from alpaca.trading.enums import OrderSide, OrderStatus, TimeInForce
 
 from app.config import settings
-from app.services.alpaca_client import AlpacaService
 from app.services import pricing
+from app.services.alpaca_client import AlpacaService
 
 # NOTE: We assume a MarketData service exists with get_quote(symbol) -> dict(bid, ask, last, ts).
+Quote = Dict[str, Any]
+_market_get_quote: Optional[Callable[[str], Quote]]
+
 try:
-    from app.services.market_data import get_quote
+    from app.services.market_data import get_quote as _imported_get_quote
 except Exception:
-    def get_quote(symbol: str) -> Dict[str, Any]:
-        # Placeholder fake quote to keep imports sane if service isn't running.
-        now = datetime.now(tz=pytz.timezone(settings.TZ))
-        return {"symbol": symbol, "bid": 100.0, "ask": 100.5, "last": 100.2, "ts": now}
+    _market_get_quote = None
+else:
+    _market_get_quote = cast(Callable[[str], Quote], _imported_get_quote)
+
+
+def get_quote(symbol: str) -> Quote:
+    if _market_get_quote is not None:
+        result = _market_get_quote(symbol)
+        return cast(Quote, result)
+
+    # Placeholder fake quote to keep imports sane if service isn't running.
+    now = datetime.now(tz=pytz.timezone(settings.TZ))
+    return {"symbol": symbol, "bid": 100.0, "ask": 100.5, "last": 100.2, "ts": now}
 
 NY = pytz.timezone(settings.TZ)
 
@@ -48,6 +60,7 @@ class TraderEngine:
         self.risk = settings.RiskSettings()
         self.session = settings.SessionToggles()
         self._replace_state: Dict[str, ReplaceState] = {}  # order_id -> state
+        self._peaks: Dict[str, float] = {}
         self._ensure_csv()
 
     # --------------- Public control ---------------
@@ -233,8 +246,6 @@ class TraderEngine:
         last = q["last"]
         # Keep a simple peak tracker in-memory (could be moved to persistent if needed)
         key = f"peak:{symbol}"
-        if not hasattr(self, "_peaks"):
-            self._peaks = {}
         peak = self._peaks.get(key, last)
         peak = max(peak, last)
         self._peaks[key] = peak
@@ -242,7 +253,7 @@ class TraderEngine:
         if last <= p80 and peak > avg:
             # Take profit via limit
             limit_px = pricing.compute_entry_limit("SELL", q["bid"], q["ask"], q["last"], self.risk.slippage_bps)
-            order = self.alpaca.submit_limit(
+            self.alpaca.submit_limit(
                 symbol=symbol, qty=qty, side=OrderSide.SELL, limit_price=limit_px, tif=TimeInForce.DAY, extended_hours=False
             )
             # No flip here; flip policy is handled by outer signal change

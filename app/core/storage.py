@@ -1,7 +1,12 @@
 from __future__ import annotations
-import json, os, tempfile
+
+import json
+import os
+import tempfile
 from pathlib import Path
 from typing import Any
+
+
 def read_json(path: Path, default: Any) -> Any:
     if not path.exists(): return default
     try:

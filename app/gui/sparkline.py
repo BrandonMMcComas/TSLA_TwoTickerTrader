@@ -1,7 +1,9 @@
 from __future__ import annotations
+
+from PySide6.QtCore import Qt
+from PySide6.QtGui import QColor, QPainter, QPen
 from PySide6.QtWidgets import QWidget
-from PySide6.QtGui import QPainter, QPen, QColor
-from PySide6.QtCore import Qt, QRectF
+
 
 class Sparkline(QWidget):
     def __init__(self, parent=None):

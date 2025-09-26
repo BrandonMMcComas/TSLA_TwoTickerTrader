@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 """
 app.services.telegram — minimal Telegram Bot API helper (no extra deps)
 - Sends messages using HTTPS to api.telegram.org
@@ -6,7 +7,9 @@ app.services.telegram — minimal Telegram Bot API helper (no extra deps)
 """
 
 from typing import Optional
+
 import requests
+
 from app.core.app_config import AppConfig
 from app.core.usb_guard import get_keys_dict
 
@@ -35,8 +38,8 @@ class TelegramNotifier:
         if parse_mode:
             payload["parse_mode"] = parse_mode
         try:
-            r = requests.post(url, json=payload, timeout=10)
-            return r.ok
+            response = requests.post(url, json=payload, timeout=10)
+            return bool(response.ok)
         except Exception:
             return False
 
@@ -47,10 +50,10 @@ class TelegramNotifier:
             return None
         url = f"https://api.telegram.org/bot{self.token}/getUpdates"
         try:
-            r = requests.get(url, timeout=10)
-            if not r.ok:
+            response = requests.get(url, timeout=10)
+            if not response.ok:
                 return None
-            js = r.json()
+            js = response.json()
             # Take the most recent update's chat id
             for upd in reversed(js.get("result", [])):
                 try:
@@ -68,10 +71,11 @@ def format_account_snapshot() -> str:
     """Fetch a simple Alpaca account + positions snapshot and format for Telegram.
        Loads keys from USB automatically. Returns a human-readable string.
     """
-    from app.core.usb_guard import load_keys_from_usb
+    from alpaca.trading.client import TradingClient
+
     from app.config.settings import APP_NAME
     from app.core.app_config import AppConfig
-    from alpaca.trading.client import TradingClient
+    from app.core.usb_guard import load_keys_from_usb
 
     cfg = AppConfig.load()
     if not load_keys_from_usb(cfg.usb_keys_path):

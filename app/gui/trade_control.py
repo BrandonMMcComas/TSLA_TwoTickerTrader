@@ -1,14 +1,18 @@
 from __future__ import annotations
-from PySide6.QtWidgets import QWidget, QLabel, QVBoxLayout, QPushButton, QHBoxLayout
-from PySide6.QtCore import Qt, QTimer
+
+import os
+
+from dotenv import dotenv_values
+from PySide6.QtCore import QTimer
+from PySide6.QtWidgets import QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget
+
+from app.core.app_config import AppConfig
 from app.core.runtime_state import state
 from app.services.alpaca_client import AlpacaService
 from app.services.market_data import get_quote
-from app.services.pricing import compute_entry_limit
 from app.services.model import predict_p_up_latest
-from app.core.app_config import AppConfig
-from dotenv import dotenv_values
-import os, math
+from app.services.pricing import compute_entry_limit
+
 
 class TradeControl(QWidget):
     def __init__(self, config: AppConfig) -> None:

@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 """
 Unified settings module (Hotfix v1.4.1)
 
@@ -10,6 +11,7 @@ Unified settings module (Hotfix v1.4.1)
 """
 
 from dataclasses import dataclass, field
+
 
 # ---- App metadata ----
 @dataclass(frozen=True)
@@ -65,6 +67,17 @@ SESSION_AFTER = False
 GATE_THRESHOLD_DEFAULT = 0.55
 BLEND_W_MODEL = 0.70
 BLEND_W_SENT = 0.30
+
+# ---- Decision Engine knobs (conservative defaults) ----
+GATE_BUFFER_NEAR_COINFLIP = 0.03
+SPREAD_WIDE_BPS_HINT = 50
+GATE_ADJ_SPREAD_WIDE = 0.02
+GATE_ADJ_EXTENDED = 0.02
+VWAP_DISAGREE_BPS = 40
+CONVICTION_DW_VWAP = 0.85
+CONVICTION_DW_WIDE_SPREAD = 0.90
+FLIP_COOLDOWN_SEC = 60
+
 
 # ---- Sentiment scheduling / retention ----
 SENTIMENT_AM_ET = "06:00"
