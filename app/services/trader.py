@@ -17,7 +17,7 @@ from app.config import settings
 from app.core.runtime_state import state
 from app.services import pricing
 from app.services.alpaca_client import AlpacaService
-from app.services.model import predict_p_up_latest
+from app.services.decision_engine import DecisionInputs, DecisionResult, decide
 
 # NOTE: We assume a MarketData service exists with get_quote(symbol) -> dict(bid, ask, last, ts).
 Quote = Dict[str, Any]
@@ -43,11 +43,9 @@ def get_quote(symbol: str) -> Quote:
 NY = pytz.timezone(settings.TZ)
 
 
-def _load_latest_sentiment_prob(sentiment_dir: Path) -> tuple[float, bool]:
-    p_sent = 0.5
-    has_sentiment = False
+def _load_latest_sentiment_score(sentiment_dir: Path) -> Optional[float]:
     if not sentiment_dir.exists():
-        return p_sent, has_sentiment
+        return None
 
     try:
         files = sorted(sentiment_dir.glob("*.json"), key=lambda p: p.stat().st_mtime, reverse=True)
@@ -55,7 +53,7 @@ def _load_latest_sentiment_prob(sentiment_dir: Path) -> tuple[float, bool]:
         files = []
 
     if not files:
-        return p_sent, has_sentiment
+        return None
 
     latest_file = files[0]
     try:
@@ -64,65 +62,34 @@ def _load_latest_sentiment_prob(sentiment_dir: Path) -> tuple[float, bool]:
         score_raw = payload.get("daily_score")
         score = float(score_raw)
     except Exception:
-        return p_sent, has_sentiment
+        return None
 
     if math.isnan(score):
-        return p_sent, has_sentiment
+        return None
 
-    # Map [-1, 1] sentiment score to probability space.
-    p_sent = (score + 1.0) / 2.0
-    # Clamp into [0, 1] for safety.
-    p_sent = max(0.0, min(1.0, p_sent))
-    has_sentiment = True
-    return p_sent, has_sentiment
+    return float(max(-1.0, min(1.0, score)))
 
 
-def compute_signal(interval: str) -> tuple[float, float, str, Dict[str, Any]]:
-    """Blend model and sentiment signals with hysteresis-based gating."""
+def _conviction_to_cash(settled_cash: float, conviction: float) -> float:
+    conv = max(0.0, min(1.0, conviction))
+    cash = settled_cash * (0.50 + 0.50 * conv)
+    return max(0.0, min(settled_cash, cash))
 
-    try:
-        p_up_raw = float(predict_p_up_latest(interval))
-    except Exception:
-        p_up_raw = float("nan")
 
-    p_up = p_up_raw if not math.isnan(p_up_raw) else 0.5
-
-    sentiment_dir = Path("data") / "sentiment"
-    p_sent, has_sentiment = _load_latest_sentiment_prob(sentiment_dir)
-
-    w_model = float(state.w_model)
-    w_sent = float(state.w_sent)
-    weight_sum = w_model + w_sent
-    if weight_sum <= 0:
-        w_model, w_sent = 1.0, 0.0
-    else:
-        w_model /= weight_sum
-        w_sent /= weight_sum
-
-    p_blend = (w_model * p_up) + (w_sent * p_sent)
-
-    th = float(state.gate_threshold)
-    th_up = min(0.70, max(th, th + 0.03))
-    th_down = max(0.40, min(th - 0.03, th))
-
-    if p_blend >= th_up:
-        target = settings.TSLL_SYMBOL
-    elif p_blend <= th_down:
-        target = settings.TSDD_SYMBOL
-    else:
-        target = ""
-
-    meta: Dict[str, Any] = {
-        "w_model": w_model,
-        "w_sent": w_sent,
-        "th": th,
-        "TH_UP": th_up,
-        "TH_DOWN": th_down,
-        "p_sent": p_sent,
-        "has_sentiment": has_sentiment,
+def _decision_components_payload(result: DecisionResult, cash_to_use: float) -> Dict[str, Any]:
+    return {
+        "side": result.side,
+        "conviction": result.conviction,
+        "gate": result.gate,
+        "p_up": result.p_up,
+        "p_sent": result.p_sent,
+        "p_blend": result.p_blend,
+        "spread_bps_tsll": result.spread_bps_tsll,
+        "spread_bps_tsdd": result.spread_bps_tsdd,
+        "vwap_bps_tsla": result.vwap_bps_tsla,
+        "cash_to_use": cash_to_use,
+        "reasons": result.reasons,
     }
-
-    return p_up, p_blend, target, meta
 
 
 @dataclass
@@ -146,6 +113,7 @@ class TraderEngine:
         self.session = settings.SessionToggles()
         self._replace_state: Dict[str, ReplaceState] = {}  # order_id -> state
         self._peaks: Dict[str, float] = {}
+        self._last_flip_ts: float = 0.0
         self._ensure_csv()
 
     # --------------- Public control ---------------
@@ -171,7 +139,8 @@ class TraderEngine:
 
     def process_once(self):
         # Check sessions and account status
-        if not self._session_allowed():
+        pre_session, rth_session, after_session = self._session_flags()
+        if not (pre_session or rth_session or after_session):
             return
 
         acct = self.alpaca.get_account()
@@ -208,37 +177,72 @@ class TraderEngine:
         spread_tsll = pricing.spread_bps(q_tsll["bid"], q_tsll["ask"])
         spread_tsdd = pricing.spread_bps(q_tsdd["bid"], q_tsdd["ask"])
         if max(spread_tsll, spread_tsdd) > self.risk.spread_max_bps:
+            if holding:
+                self._manage_position(holding)
             return
 
-        p_up, p_blend, target_side, meta = compute_signal(state.interval)
-        decision_components = {"p_up": p_up, "p_blend": p_blend, "target": target_side, "meta": meta}
+        sentiment_dir = Path("data") / "sentiment"
+        sentiment_score = _load_latest_sentiment_score(sentiment_dir)
+        decision_inputs = DecisionInputs(
+            interval=state.interval,
+            last_sentiment_daily=sentiment_score,
+            session_pre=pre_session,
+            session_rth=rth_session,
+            session_after=after_session,
+        )
+        decision_result = decide(decision_inputs)
+        cash_to_use = _conviction_to_cash(settled_cash, decision_result.conviction)
+        decision_components = _decision_components_payload(decision_result, cash_to_use)
 
-        if not target_side:
+        if decision_result.side == "HOLD":
             if holding:
                 self._manage_position(holding, decision_components)
             return
 
+        target_side = decision_result.side
+
         # Enforce one-position policy and flip if needed
         if holding and holding != target_side:
+            now_ts = time.time()
+            if now_ts - self._last_flip_ts < settings.FLIP_COOLDOWN_SEC:
+                self._manage_position(holding, decision_components)
+                return
             # Close current position then open opposite (flip)
             self._close_position_limit(holding, decision_components)
-            # Optional cooldown can be applied here (default 0)
-            self._open_side(target_side, settled_cash, decision_components)
+            self._open_side(target_side, cash_to_use, decision_components)
+            self._last_flip_ts = now_ts
         elif not holding:
             # Open new position
-            self._open_side(target_side, settled_cash, decision_components)
+            self._open_side(target_side, cash_to_use, decision_components)
+            self._last_flip_ts = time.time()
         else:
             # Manage exits (P80 TP & trailing stop-limit maintenance)
             self._manage_position(holding, decision_components)
 
     # --------------- Helpers ---------------
     def _session_allowed(self) -> bool:
+        pre, rth, after = self._session_flags()
+        return pre or rth or after
+
+    def _session_flags(self) -> tuple[bool, bool, bool]:
         now = datetime.now(NY)
         tod = now.time()
-        pre = self.session.pre and (tod >= datetime.strptime("04:00", "%H:%M").time()) and (tod < datetime.strptime("09:30", "%H:%M").time())
-        rth = self.session.rth and (tod >= datetime.strptime("09:30", "%H:%M").time()) and (tod < datetime.strptime("16:00", "%H:%M").time())
-        after = self.session.after and (tod >= datetime.strptime("16:00", "%H:%M").time()) and (tod < datetime.strptime("20:00", "%H:%M").time())
-        return pre or rth or after
+        pre = self.session.pre and (
+            tod >= datetime.strptime("04:00", "%H:%M").time()
+        ) and (
+            tod < datetime.strptime("09:30", "%H:%M").time()
+        )
+        rth = self.session.rth and (
+            tod >= datetime.strptime("09:30", "%H:%M").time()
+        ) and (
+            tod < datetime.strptime("16:00", "%H:%M").time()
+        )
+        after = self.session.after and (
+            tod >= datetime.strptime("16:00", "%H:%M").time()
+        ) and (
+            tod < datetime.strptime("20:00", "%H:%M").time()
+        )
+        return pre, rth, after
 
     def _is_margin_account(self, acct) -> bool:
         # Heuristic: daytrading_buying_power exists/ > 0 or pattern_day_trader field present.
@@ -255,7 +259,7 @@ class TraderEngine:
     def _open_side(
         self,
         desired_symbol: str,
-        settled_cash: float,
+        cash_to_use: float,
         decision_components: Optional[Dict[str, Any]] = None,
     ):
         sym, side, other = self._choose_symbols(desired_symbol)
@@ -263,7 +267,7 @@ class TraderEngine:
         entry_limit = pricing.compute_entry_limit(
             "BUY", q["bid"], q["ask"], q["last"], self.risk.slippage_bps
         )
-        qty = math.floor(settled_cash / entry_limit)
+        qty = math.floor(cash_to_use / entry_limit)
         if qty < 1:
             return
 
