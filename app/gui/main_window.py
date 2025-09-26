@@ -1,13 +1,17 @@
 from __future__ import annotations
-from PySide6.QtWidgets import QApplication, QMainWindow, QWidget, QLabel, QVBoxLayout, QTabWidget
+
 from PySide6.QtCore import Qt, QTimer
+from PySide6.QtWidgets import QApplication, QLabel, QMainWindow, QTabWidget, QVBoxLayout, QWidget
+
 from app.core.app_config import AppConfig
 from app.core.usb_guard import read_keys_env
 from app.gui.dashboard import Dashboard
-from app.gui.train_panel import TrainPanel
-from app.gui.trade_control import TradeControl
-from app.gui.settings_panel import SettingsPanel
 from app.gui.logs_panel import LogsPanel
+from app.gui.settings_panel import SettingsPanel
+from app.gui.trade_control import TradeControl
+from app.gui.train_panel import TrainPanel
+
+
 class MainWindow(QMainWindow):
     def __init__(self) -> None:
         super().__init__()

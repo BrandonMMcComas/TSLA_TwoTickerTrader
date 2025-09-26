@@ -1,24 +1,33 @@
 from __future__ import annotations
-from PySide6.QtWidgets import QWidget, QLabel, QVBoxLayout, QHBoxLayout, QPushButton, QFrame
-from PySide6.QtCore import Qt, QTimer, QTime, QDateTime
-from app.gui.sparkline import Sparkline
-from app.core.runtime_state import state, normalize_weights
-from app.config.paths import DATA_DIR
-from app.services.model import predict_p_up_latest, load_model
-from app.services.market_data import get_quote
-from app.services.pricing import spread_bps
-from app.services.live_vwap import vwap_distance_bps
-from app.services.alpaca_client import AlpacaService
+
+import datetime
+import glob
+import json
+import os
+from typing import List
+
+import pytz
 from dotenv import dotenv_values
+from PySide6.QtCore import QTimer
+from PySide6.QtWidgets import QFrame, QHBoxLayout, QLabel, QVBoxLayout, QWidget
+
+from app.config.paths import DATA_DIR
 from app.core.app_config import AppConfig
-import os, glob, json, math, pytz, datetime
+from app.core.runtime_state import state
+from app.gui.sparkline import Sparkline
+from app.services.alpaca_client import AlpacaService
+from app.services.live_vwap import vwap_distance_bps
+from app.services.market_data import get_quote
+from app.services.model import predict_p_up_latest
+from app.services.pricing import spread_bps
 
 NY = pytz.timezone("America/New_York")
 
 def _read_daily_sentiment_score() -> float | None:
     sdir = DATA_DIR / "sentiment"
     files = sorted(glob.glob(os.path.join(sdir, "*.json")))
-    if not files: return None
+    if not files:
+        return None
     latest = files[-1]
     try:
         with open(latest, "r", encoding="utf-8") as f:
@@ -81,9 +90,9 @@ class Dashboard(QWidget):
         v.addWidget(self.lbl_sent)
 
         # Timer storage
-        self._pup_vals = []
-        self._sp_tsll_vals = []
-        self._sp_tsdd_vals = []
+        self._pup_vals: List[float] = []
+        self._sp_tsll_vals: List[float] = []
+        self._sp_tsdd_vals: List[float] = []
 
         # Timers
         self.timer_fast = QTimer(self); self.timer_fast.timeout.connect(self._tick_fast); self.timer_fast.start(4000)

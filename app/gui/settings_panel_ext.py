@@ -14,13 +14,22 @@ UI:
 Runs in a background QThread to avoid blocking the GUI.
 """
 
-from PySide6.QtWidgets import (
-    QGroupBox, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QComboBox, QCheckBox, QWidget
-)
+from typing import Optional
+
 from PySide6.QtCore import QObject, QThread, Signal, Slot
+from PySide6.QtWidgets import (
+    QCheckBox,
+    QComboBox,
+    QGroupBox,
+    QHBoxLayout,
+    QLabel,
+    QPushButton,
+    QVBoxLayout,
+)
 
 # Import the original SettingsPanel to subclass
 from app.gui import settings_panel as sp
+
 
 class _SentimentWorker(QObject):
     finished = Signal(bool, str)
@@ -47,7 +56,9 @@ class _SentimentWorker(QObject):
 
 def _is_am_now_et() -> bool:
     try:
-        import datetime, pytz
+        import datetime
+
+        import pytz
         NY = pytz.timezone("America/New_York")
         return datetime.datetime.now(NY).hour < 12
     except Exception:
@@ -89,8 +100,8 @@ class ExtendedSettingsPanel(sp.SettingsPanel):
         self._btn.clicked.connect(self._on_click)
 
         # Thread/worker holders
-        self._thr = None
-        self._worker = None
+        self._thr: Optional[QThread] = None
+        self._worker: Optional[_SentimentWorker] = None
 
     def _on_click(self):
         mode = self._mode.currentText()
@@ -112,4 +123,4 @@ class ExtendedSettingsPanel(sp.SettingsPanel):
         self._btn.setEnabled(True)
 
 # Monkey-patch: replace the exported SettingsPanel with our extended version
-sp.SettingsPanel = ExtendedSettingsPanel
+setattr(sp, "SettingsPanel", ExtendedSettingsPanel)

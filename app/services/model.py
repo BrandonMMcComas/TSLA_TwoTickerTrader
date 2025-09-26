@@ -1,17 +1,19 @@
 from __future__ import annotations
-import pandas as pd
-import numpy as np
+
 from dataclasses import dataclass
-from typing import Dict, Any
-from sklearn.preprocessing import StandardScaler
-from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import accuracy_score, roc_auc_score, precision_score
-from joblib import dump, load
 from datetime import datetime, timezone
-from pathlib import Path
-from app.services.history import fetch_tsla_bars
-from app.services.features import add_all_features, make_dataset, FEATURE_COLS
+from typing import Dict
+
+import pandas as pd
+from joblib import dump, load
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import accuracy_score, precision_score, roc_auc_score
+from sklearn.preprocessing import StandardScaler
+
 from app.config.paths import MODELS_DIR
+from app.services.features import FEATURE_COLS, add_all_features, make_dataset
+from app.services.history import fetch_tsla_bars
+
 MODEL_PATH = MODELS_DIR / "tsla_direction_model.joblib"
 @dataclass
 class TrainResult:
@@ -74,8 +76,8 @@ def predict_p_up_latest(interval: str) -> float:
         return float("nan")
     if payload.get("interval") != interval:
         return float("nan")
+    from app.services.features import FEATURE_COLS, add_all_features
     from app.services.history import fetch_tsla_bars
-    from app.services.features import add_all_features, FEATURE_COLS
     df = fetch_tsla_bars(interval=interval, lookback_days=payload.get("lookback_days", 5))
     df_feat = add_all_features(df)
     X = df_feat[FEATURE_COLS].dropna()

@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 """
 Unified settings module (Hotfix v1.4.1)
 
@@ -10,6 +11,7 @@ Unified settings module (Hotfix v1.4.1)
 """
 
 from dataclasses import dataclass, field
+
 
 # ---- App metadata ----
 @dataclass(frozen=True)

@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 """
 logs_panel.py — Hotfix v1.4.5
 
@@ -12,10 +13,21 @@ This panel shows:
 """
 
 import os
-from PySide6.QtWidgets import QWidget, QVBoxLayout, QLabel, QPushButton, QFileDialog, QHBoxLayout, QPlainTextEdit, QTableWidget, QTableWidgetItem
-from PySide6.QtCore import QTimer, Qt
+
+from PySide6.QtCore import QTimer
 from PySide6.QtGui import QTextCursor
-from app.config.paths import LOGS_DIR, DATA_DIR
+from PySide6.QtWidgets import (
+    QHBoxLayout,
+    QLabel,
+    QPlainTextEdit,
+    QPushButton,
+    QTableWidget,
+    QTableWidgetItem,
+    QVBoxLayout,
+    QWidget,
+)
+
+from app.config.paths import DATA_DIR, LOGS_DIR
 
 LOG_PATH = LOGS_DIR / "app.log"
 TRADES_CSV = DATA_DIR / "trades.csv"
