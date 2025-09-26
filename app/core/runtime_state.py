@@ -21,7 +21,9 @@ class RuntimeState:
     interval: str = "5m"  # for model p_up polling
     lookback_days: int = 30
 
+
 state = RuntimeState()
+
 
 def normalize_weights():
     s = state.w_model + state.w_sent

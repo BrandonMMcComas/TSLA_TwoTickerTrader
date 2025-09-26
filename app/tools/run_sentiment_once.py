@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+main
 """
 app.tools.run_sentiment_once
 Manual AM/PM sentiment run:
-- Uses Google CSE (if GOOGLE_API_KEY + GOOGLE_CSE_ID exist); otherwise falls back to Google News RSS.
+- Uses Google CSE (if GOOGLE_API_KEY + GOOGLE_CSE_ID exist); otherwise
+  falls back to Google News RSS.
 - Summarizes/scorers via OpenAI (gpt-4o-mini) into strict JSON items.
 - Writes data/sentiment/YYYY-MM-DD.json and prunes >30 days.
 Guardrails respected (USB-only secrets).
@@ -16,6 +18,11 @@ Usage:
 
 Exit codes: 0 success, 2 missing OpenAI key, 3 network/API error, 4 other error.
 """
+
+from __future__ import annotations
+
+=======
+main
 import argparse
 import datetime
 import hashlib
@@ -28,36 +35,64 @@ from typing import Any, Dict, List, Tuple
 import feedparser
 import pytz
 import requests
+from app.config.paths import DATA_DIR
+from app.core.app_config import AppConfig
+from app.core.usb_guard import get_keys_dict
+from openai import OpenAI
+=======
 from openai import OpenAI
 
 from app.config.paths import DATA_DIR
 from app.core.app_config import AppConfig
 from app.core.usb_guard import get_keys_dict
+main
 
 NY = pytz.timezone("America/New_York")
 
 AM_QUERIES = [
     # 1) Company Premarket
-    '("Tesla" OR "TSLA") (premarket OR pre-market OR early trading OR analyst) site:reuters.com OR site:bloomberg.com OR site:cnbc.com OR site:wsj.com',
+    (
+        '("Tesla" OR "TSLA") (premarket OR pre-market OR early trading OR analyst) '
+        "site:reuters.com OR site:bloomberg.com OR site:cnbc.com OR site:wsj.com"
+    ),
     # 2) US Macro Today
-    '(premarket OR futures) (CPI OR PCE OR jobs OR payrolls OR claims OR Fed OR yields) site:reuters.com OR site:bloomberg.com OR site:cnbc.com',
+    (
+        "(premarket OR futures) (CPI OR PCE OR jobs OR payrolls OR claims OR Fed OR yields) "
+        "site:reuters.com OR site:bloomberg.com OR site:cnbc.com"
+    ),
     # 3) Global Trade/Supply
-    '(EV OR lithium OR nickel OR battery OR tariffs OR shipping OR Suez OR Panama OR China OR EU) ("Tesla" OR "TSLA" OR "electric vehicle") site:reuters.com OR site:bloomberg.com',
+    (
+        '(EV OR lithium OR nickel OR battery OR tariffs OR shipping OR '
+        'Suez OR Panama OR China OR EU) '
+        '("Tesla" OR "TSLA" OR "electric vehicle") site:reuters.com OR site:bloomberg.com'
+    ),
 ]
 PM_QUERIES = [
     # 1) Company Post‑Market
-    '("Tesla" OR "TSLA") (after-hours OR postmarket OR earnings OR deliveries OR recall OR guidance OR margins OR NHTSA) site:reuters.com OR site:bloomberg.com OR site:cnbc.com OR site:wsj.com',
+    (
+        '("Tesla" OR "TSLA") (after-hours OR postmarket OR earnings OR deliveries OR '
+        'recall OR guidance OR margins OR NHTSA) site:reuters.com OR site:bloomberg.com '
+        'OR site:cnbc.com OR site:wsj.com'
+    ),
     # 2) US Macro Close Wrap
-    '(market wrap OR stocks close OR yields OR Fed OR dollar) (S&P OR Nasdaq OR Dow) site:reuters.com OR site:bloomberg.com OR site:cnbc.com',
+    (
+        "(market wrap OR stocks close OR yields OR Fed OR dollar) (S&P OR Nasdaq OR Dow) "
+        "site:reuters.com OR site:bloomberg.com OR site:cnbc.com"
+    ),
     # 3) Global Overnight Risk
-    '(Asia OR Europe OR oil OR Middle East OR tariffs OR shipping OR supply chain) (market OR stocks OR risk) site:reuters.com OR site:bloomberg.com',
+    (
+        "(Asia OR Europe OR oil OR Middle East OR tariffs OR shipping OR supply chain) "
+        "(market OR stocks OR risk) site:reuters.com OR site:bloomberg.com"
+    ),
 ]
+
 
 def _today_path() -> Path:
     outdir = DATA_DIR / "sentiment"
     outdir.mkdir(parents=True, exist_ok=True)
     day = datetime.datetime.now(NY).date().isoformat()
     return outdir / f"{day}.json"
+
 
 def _prune_old(days: int = 30):
     outdir = DATA_DIR / "sentiment"
@@ -72,9 +107,14 @@ def _prune_old(days: int = 30):
         except Exception:
             continue
 
+
 def _dedupe_by_url(items: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    seen = set()
+    out = []
+=======
     seen: set[str] = set()
     out: List[Dict[str, Any]] = []
+main
     for it in items:
         u = it.get("url") or it.get("link") or ""
         h = hashlib.sha256(u.encode("utf-8")).hexdigest() if u else None
@@ -85,23 +125,36 @@ def _dedupe_by_url(items: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         out.append(it)
     return out
 
-def _google_cse_search(queries: List[str], key: str, cse_id: str) -> List[Dict[str, Any]]:
+
+def _google_cse_search(
+    queries: List[str], key: str, cse_id: str
+) -> List[Dict[str, Any]]:
     # dateRestrict= d1 (last 1 day), sort by date
     base = "https://www.googleapis.com/customsearch/v1"
     results = []
     for q in queries:
-        params = {"key": key, "cx": cse_id, "q": q, "sort": "date", "dateRestrict": "d1", "num": 10}
+        params = {
+            "key": key,
+            "cx": cse_id,
+            "q": q,
+            "sort": "date",
+            "dateRestrict": "d1",
+            "num": 10,
+        }
         r = requests.get(base, params=params, timeout=15)
         r.raise_for_status()
         js = r.json()
         for it in js.get("items", []):
-            results.append({
-                "title": it.get("title"),
-                "snippet": it.get("snippet"),
-                "url": it.get("link"),
-                "source": "cse",
-            })
+            results.append(
+                {
+                    "title": it.get("title"),
+                    "snippet": it.get("snippet"),
+                    "url": it.get("link"),
+                    "source": "cse",
+                }
+            )
     return _dedupe_by_url(results)
+
 
 def _google_news_rss(queries: List[str]) -> List[Dict[str, Any]]:
     # Fallback only when no CSE keys. Use News RSS search with site: qualifiers
@@ -111,24 +164,37 @@ def _google_news_rss(queries: List[str]) -> List[Dict[str, Any]]:
         params = {"q": q, "hl": "en-US", "gl": "US", "ceid": "US:en"}
         feed = feedparser.parse(url, params=params)
         for e in feed.entries[:10]:
-            results.append({
-                "title": e.get("title"),
-                "snippet": e.get("summary", ""),
-                "url": e.get("link"),
-                "source": "rss",
-            })
+            results.append(
+                {
+                    "title": e.get("title"),
+                    "snippet": e.get("summary", ""),
+                    "url": e.get("link"),
+                    "source": "rss",
+                }
+            )
     return _dedupe_by_url(results)
 
-def _summarize_items(items: List[Dict[str, Any]], client: OpenAI, run_kind: str) -> Tuple[float, Dict[str,float], List[Dict[str, Any]]]:
+
+def _summarize_items(
+    items: List[Dict[str, Any]], client: OpenAI, run_kind: str
+) -> Tuple[float, Dict[str, float], List[Dict[str, Any]]]:
     # limit to 12 newest-first (we already sorted by freshness via API; keep order)
     items = items[:12]
     out_items = []
+    cats: Dict[str, List[float]] = {
+        "company": [],
+        "us_macro": [],
+        "global_trade": [],
+    }
+=======
     cats: Dict[str, List[float]] = {"company": [], "us_macro": [], "global_trade": []}
+main
 
     sys_prompt = (
         "You are a market news summarizer for TSLA swing trading. "
         "Return STRICT JSON for each input article with fields: "
-        "{category ∈ {company, us_macro, global_trade}, sentiment ∈ [-1,1], relevance ∈ [0,1], summary ≤ 40 words}."
+        "{category ∈ {company, us_macro, global_trade}, sentiment ∈ [-1,1], "
+        "relevance ∈ [0,1], summary ≤ 40 words}."
     )
     for it in items:
         text = f"Title: {it.get('title')}\nSnippet: {it.get('snippet')}\nURL: {it.get('url')}"
@@ -136,24 +202,34 @@ def _summarize_items(items: List[Dict[str, Any]], client: OpenAI, run_kind: str)
             model="gpt-4o-mini",
             temperature=0,
             messages=[
-                {"role":"system", "content": sys_prompt},
-                {"role":"user", "content": f"Classify and summarize this article for the {run_kind.upper()} set:\n{text}\nReturn ONLY JSON object."}
-            ]
+                {"role": "system", "content": sys_prompt},
+                {
+                    "role": "user",
+                    "content": (
+                        "Classify and summarize this article for the "
+                        f"{run_kind.upper()} set:\n{text}\n"
+                        "Return ONLY JSON object."
+                    ),
+                },
+            ],
         )
         content = resp.choices[0].message.content.strip()
         # Try to parse a single JSON object; if it fails, fallback to neutral
         try:
             js = json.loads(content)
             category = js.get("category")
-            if category not in ("company","us_macro","global_trade"):
+            if category not in ("company", "us_macro", "global_trade"):
                 category = "company"
             sentiment = float(js.get("sentiment", 0.0))
             sentiment = max(-1.0, min(1.0, sentiment))
             relevance = float(js.get("relevance", 0.0))
             relevance = max(0.0, min(1.0, relevance))
-            summary = js.get("summary","")[:280]
+            summary = js.get("summary", "")[:280]
         except Exception:
-            category = "company"; sentiment = 0.0; relevance = 0.0; summary = "Neutral (parser fallback)."
+            category = "company"
+            sentiment = 0.0
+            relevance = 0.0
+            summary = "Neutral (parser fallback)."
 
         out = {
             "category": category,
@@ -168,7 +244,8 @@ def _summarize_items(items: List[Dict[str, Any]], client: OpenAI, run_kind: str)
         cats.setdefault(category, cats["company"]).append(sentiment * relevance)
 
     def wavg(vals: list[float]) -> float:
-        if not vals: return 0.0
+        if not vals:
+            return 0.0
         # already weighted by relevance; average them
         return sum(vals) / max(1, len(vals))
 
@@ -178,8 +255,17 @@ def _summarize_items(items: List[Dict[str, Any]], client: OpenAI, run_kind: str)
         "global_trade": round(wavg(cats["global_trade"]), 4),
     }
     # daily_score = mean of three categories
-    daily_score = round((category_scores["company"] + category_scores["us_macro"] + category_scores["global_trade"]) / 3.0, 4)
+    daily_score = round(
+        (
+            category_scores["company"]
+            + category_scores["us_macro"]
+            + category_scores["global_trade"]
+        )
+        / 3.0,
+        4,
+    )
     return daily_score, category_scores, out_items
+
 
 def run_once(run_kind: str, keep_weekends: bool) -> Path:
     # weekend skip
@@ -227,13 +313,18 @@ def run_once(run_kind: str, keep_weekends: bool) -> Path:
     _prune_old(30)
     return p
 
+
 def main(argv=None):
     ap = argparse.ArgumentParser()
     g = ap.add_mutually_exclusive_group(required=False)
     g.add_argument("--am", action="store_true", help="Run AM query set now")
     g.add_argument("--pm", action="store_true", help="Run PM query set now")
-    g.add_argument("--auto", action="store_true", help="Choose AM before 12:00 ET else PM")
-    ap.add_argument("--keep-weekends", action="store_true", help="Do not skip on Sat/Sun")
+    g.add_argument(
+        "--auto", action="store_true", help="Choose AM before 12:00 ET else PM"
+    )
+    ap.add_argument(
+        "--keep-weekends", action="store_true", help="Do not skip on Sat/Sun"
+    )
     args = ap.parse_args(argv)
 
     if args.auto or (not args.am and not args.pm):
@@ -255,6 +346,7 @@ def main(argv=None):
     except Exception as e:
         sys.stderr.write(f"Error: {e}\n")
         return 4
+
 
 if __name__ == "__main__":
     raise SystemExit(main())

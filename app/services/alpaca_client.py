@@ -1,5 +1,8 @@
+from typing import List, Optional, Union
+=======
 
 from typing import Any, List, Optional, Union, cast
+main
 
 from alpaca.trading.client import TradingClient
 from alpaca.trading.enums import OrderSide, OrderStatus, TimeInForce
@@ -18,7 +21,13 @@ class AlpacaService:
     Never sets paper=True.
     """
 
-    def __init__(self, api_key: Optional[str] = None, api_secret: Optional[str] = None, *, raw_data: bool = False):
+    def __init__(
+        self,
+        api_key: Optional[str] = None,
+        api_secret: Optional[str] = None,
+        *,
+        raw_data: bool = False,
+    ):
         # paper=False enforces LIVE per spec
         self.client = TradingClient(api_key, api_secret, paper=False, raw_data=raw_data)
 
@@ -97,7 +106,12 @@ class AlpacaService:
             orders = [
                 o
                 for o in orders
+
+                if (getattr(o, "symbol", None) or getattr(o, "asset_symbol", None))
+                == symbol
+=======
                 if (getattr(o, "symbol", None) or getattr(o, "asset_symbol", None)) == symbol
+main
             ]
         return orders
 

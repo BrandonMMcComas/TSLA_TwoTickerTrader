@@ -22,16 +22,17 @@ class Sparkline(QWidget):
         p.fillRect(rect, Qt.transparent)
         if not self.values:
             return
-        lo = min(self.values); hi = max(self.values)
+        lo = min(self.values)
+        hi = max(self.values)
         if hi == lo:
             hi = lo + 1e-9
         n = len(self.values)
         step = rect.width() / max(1, n - 1)
-        pen = QPen(QColor(60,60,60), 1.5)
+        pen = QPen(QColor(60, 60, 60), 1.5)
         p.setPen(pen)
         for i in range(n - 1):
             x1 = rect.left() + i * step
             x2 = rect.left() + (i + 1) * step
             y1 = rect.bottom() - (self.values[i] - lo) / (hi - lo) * rect.height()
-            y2 = rect.bottom() - (self.values[i+1] - lo) / (hi - lo) * rect.height()
+            y2 = rect.bottom() - (self.values[i + 1] - lo) / (hi - lo) * rect.height()
             p.drawLine(int(x1), int(y1), int(x2), int(y2))

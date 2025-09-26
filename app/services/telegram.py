@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+main
 """
 app.services.telegram — minimal Telegram Bot API helper (no extra deps)
 - Sends messages using HTTPS to api.telegram.org
 - Reads token/chat_id from USB keys.env via usb_guard.get_keys_dict
 """
+
+from __future__ import annotations
 
 from typing import Optional
 
@@ -15,6 +18,7 @@ from app.core.usb_guard import get_keys_dict
 
 TELEGRAM_TOKEN_KEY = "TELEGRAM_BOT_TOKEN"
 TELEGRAM_CHAT_ID_KEY = "TELEGRAM_CHAT_ID"
+
 
 class TelegramNotifier:
     def __init__(self, token: Optional[str], chat_id: Optional[str]):
@@ -44,8 +48,8 @@ class TelegramNotifier:
             return False
 
     def detect_chat_id(self) -> Optional[str]:
-        """ Try to fetch the most recent chat_id from getUpdates.
-            Ask the user to send any message to the bot first. """
+        """Try to fetch the most recent chat_id from getUpdates.
+        Ask the user to send any message to the bot first."""
         if not self.token:
             return None
         url = f"https://api.telegram.org/bot{self.token}/getUpdates"
@@ -67,9 +71,10 @@ class TelegramNotifier:
             return None
         return None
 
+
 def format_account_snapshot() -> str:
     """Fetch a simple Alpaca account + positions snapshot and format for Telegram.
-       Loads keys from USB automatically. Returns a human-readable string.
+    Loads keys from USB automatically. Returns a human-readable string.
     """
     from alpaca.trading.client import TradingClient
 

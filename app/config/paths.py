@@ -8,6 +8,8 @@ LOGS_DIR = PROJECT_ROOT / "logs"
 MODELS_DIR = PROJECT_ROOT / "models"
 APP_CONFIG_PATH = DATA_DIR / "app_config.json"
 LOG_FILE_PATH = LOGS_DIR / "app.log"
+
+
 def ensure_runtime_dirs():
     for p in (DATA_DIR, LOGS_DIR, MODELS_DIR, DATA_DIR / "sentiment"):
         p.mkdir(parents=True, exist_ok=True)

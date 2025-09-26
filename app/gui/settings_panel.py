@@ -36,66 +36,122 @@ class SettingsPanel(QWidget):
         self.path_edit = QLineEdit(self.config.usb_keys_path)
         browse = QPushButton("Browse…")
         save_path = QPushButton("Save Path")
-        row.addWidget(self.path_edit); row.addWidget(browse); row.addWidget(save_path)
+        row.addWidget(self.path_edit)
+        row.addWidget(browse)
+        row.addWidget(save_path)
         v.addLayout(row)
-        v.addWidget(QLabel("Only the USB path is stored locally in data/app_config.json. No secrets are written to local disk."))
+        v.addWidget(
+            QLabel(
+                (
+                    "Only the USB path is stored locally in data/app_config.json. "
+                    "No secrets are written to local disk."
+                )
+            )
+        )
 
         # Keys writer
-        v.addSpacing(10); v.addWidget(QLabel("<b>API Keys (saved to USB only)</b>"))
-        self.alpaca_id = QLineEdit(); self.alpaca_id.setPlaceholderText("ALPACA_API_KEY_ID")
-        self.alpaca_secret = QLineEdit(); self.alpaca_secret.setPlaceholderText("ALPACA_API_SECRET_KEY"); self.alpaca_secret.setEchoMode(QLineEdit.Password)
-        self.openai_key = QLineEdit(); self.openai_key.setPlaceholderText("OPENAI_API_KEY"); self.openai_key.setEchoMode(QLineEdit.Password)
-        self.google_key = QLineEdit(); self.google_key.setPlaceholderText("GOOGLE_API_KEY"); self.google_key.setEchoMode(QLineEdit.Password)
-        self.google_cse = QLineEdit(); self.google_cse.setPlaceholderText("GOOGLE_CSE_ID")
-        for w in [self.alpaca_id, self.alpaca_secret, self.openai_key, self.google_key, self.google_cse]:
+        v.addSpacing(10)
+        v.addWidget(QLabel("<b>API Keys (saved to USB only)</b>"))
+        self.alpaca_id = QLineEdit()
+        self.alpaca_id.setPlaceholderText("ALPACA_API_KEY_ID")
+        self.alpaca_secret = QLineEdit()
+        self.alpaca_secret.setPlaceholderText("ALPACA_API_SECRET_KEY")
+        self.alpaca_secret.setEchoMode(QLineEdit.Password)
+        self.openai_key = QLineEdit()
+        self.openai_key.setPlaceholderText("OPENAI_API_KEY")
+        self.openai_key.setEchoMode(QLineEdit.Password)
+        self.google_key = QLineEdit()
+        self.google_key.setPlaceholderText("GOOGLE_API_KEY")
+        self.google_key.setEchoMode(QLineEdit.Password)
+        self.google_cse = QLineEdit()
+        self.google_cse.setPlaceholderText("GOOGLE_CSE_ID")
+        for w in [
+            self.alpaca_id,
+            self.alpaca_secret,
+            self.openai_key,
+            self.google_key,
+            self.google_cse,
+        ]:
             v.addWidget(w)
         save_keys_btn = QPushButton("Save keys.env to USB")
         v.addWidget(save_keys_btn)
 
         # Gate threshold & blend weights
-        v.addSpacing(10); v.addWidget(QLabel("<b>Trade Gate & Sentiment Blend</b>"))
+        v.addSpacing(10)
+        v.addWidget(QLabel("<b>Trade Gate & Sentiment Blend</b>"))
         rowt = QHBoxLayout()
         rowt.addWidget(QLabel("Gate threshold (0.40–0.70):"))
-        self.thresh = QSlider(Qt.Horizontal); self.thresh.setMinimum(40); self.thresh.setMaximum(70); self.thresh.setValue(int(state.gate_threshold*100))
+        self.thresh = QSlider(Qt.Horizontal)
+        self.thresh.setMinimum(40)
+        self.thresh.setMaximum(70)
+        self.thresh.setValue(int(state.gate_threshold * 100))
         self.lbl_thresh = QLabel(f"{state.gate_threshold:.2f}")
-        rowt.addWidget(self.thresh); rowt.addWidget(self.lbl_thresh)
+        rowt.addWidget(self.thresh)
+        rowt.addWidget(self.lbl_thresh)
         v.addLayout(rowt)
 
         roww = QHBoxLayout()
         roww.addWidget(QLabel("w_model:"))
-        self.wm = QSlider(Qt.Horizontal); self.wm.setMinimum(0); self.wm.setMaximum(100); self.wm.setValue(int(state.w_model*100))
+        self.wm = QSlider(Qt.Horizontal)
+        self.wm.setMinimum(0)
+        self.wm.setMaximum(100)
+        self.wm.setValue(int(state.w_model * 100))
         roww.addWidget(self.wm)
         roww.addWidget(QLabel("w_sent:"))
-        self.ws = QSlider(Qt.Horizontal); self.ws.setMinimum(0); self.ws.setMaximum(100); self.ws.setValue(int(state.w_sent*100))
+        self.ws = QSlider(Qt.Horizontal)
+        self.ws.setMinimum(0)
+        self.ws.setMaximum(100)
+        self.ws.setValue(int(state.w_sent * 100))
         roww.addWidget(self.ws)
         norm = QPushButton("Normalize weights")
         roww.addWidget(norm)
         v.addLayout(roww)
 
         # Sessions
-        v.addSpacing(10); v.addWidget(QLabel("<b>Sessions</b>"))
-        self.chk_pre = QCheckBox("Pre (04:00–09:30)"); self.chk_pre.setChecked(state.session_pre)
-        self.chk_rth = QCheckBox("RTH (09:30–16:00)"); self.chk_rth.setChecked(state.session_rth)
-        self.chk_after = QCheckBox("After (16:00–20:00)"); self.chk_after.setChecked(state.session_after)
-        v.addWidget(self.chk_pre); v.addWidget(self.chk_rth); v.addWidget(self.chk_after)
+        v.addSpacing(10)
+        v.addWidget(QLabel("<b>Sessions</b>"))
+        self.chk_pre = QCheckBox("Pre (04:00–09:30)")
+        self.chk_pre.setChecked(state.session_pre)
+        self.chk_rth = QCheckBox("RTH (09:30–16:00)")
+        self.chk_rth.setChecked(state.session_rth)
+        self.chk_after = QCheckBox("After (16:00–20:00)")
+        self.chk_after.setChecked(state.session_after)
+        v.addWidget(self.chk_pre)
+        v.addWidget(self.chk_rth)
+        v.addWidget(self.chk_after)
 
         # Risk/price controls
-        v.addSpacing(10); v.addWidget(QLabel("<b>Risk & Pricing</b>"))
-        self.sl_stop = QSlider(Qt.Horizontal); self.sl_stop.setMinimum(10); self.sl_stop.setMaximum(500); self.sl_stop.setValue(int(state.stop_loss_pct*10000))  # 1.0%..5.0%
-        self.lbl_stop = QLabel(f"Stop-loss: {state.stop_loss_pct*100:.2f}%")
-        v.addWidget(self.lbl_stop); v.addWidget(self.sl_stop)
+        v.addSpacing(10)
+        v.addWidget(QLabel("<b>Risk & Pricing</b>"))
+        self.sl_stop = QSlider(Qt.Horizontal)
+        self.sl_stop.setMinimum(10)
+        self.sl_stop.setMaximum(500)
+        self.sl_stop.setValue(int(state.stop_loss_pct * 10000))  # 1.0%..5.0%
+        self.lbl_stop = QLabel(f"Stop-loss: {state.stop_loss_pct * 100:.2f}%")
+        v.addWidget(self.lbl_stop)
+        v.addWidget(self.sl_stop)
 
-        self.sp_slip = QSpinBox(); self.sp_slip.setRange(5, 200); self.sp_slip.setValue(state.slippage_bps)
-        self.sp_spread = QSpinBox(); self.sp_spread.setRange(10, 300); self.sp_spread.setValue(state.spread_max_bps)
-        self.sp_stoplim = QSpinBox(); self.sp_stoplim.setRange(5, 100); self.sp_stoplim.setValue(state.stop_limit_offset_bps)
+        self.sp_slip = QSpinBox()
+        self.sp_slip.setRange(5, 200)
+        self.sp_slip.setValue(state.slippage_bps)
+        self.sp_spread = QSpinBox()
+        self.sp_spread.setRange(10, 300)
+        self.sp_spread.setValue(state.spread_max_bps)
+        self.sp_stoplim = QSpinBox()
+        self.sp_stoplim.setRange(5, 100)
+        self.sp_stoplim.setValue(state.stop_limit_offset_bps)
         rowr = QHBoxLayout()
-        rowr.addWidget(QLabel("Slippage (bps):")); rowr.addWidget(self.sp_slip)
-        rowr.addWidget(QLabel("Spread max (bps):")); rowr.addWidget(self.sp_spread)
-        rowr.addWidget(QLabel("Stop-limit offset (bps):")); rowr.addWidget(self.sp_stoplim)
+        rowr.addWidget(QLabel("Slippage (bps):"))
+        rowr.addWidget(self.sp_slip)
+        rowr.addWidget(QLabel("Spread max (bps):"))
+        rowr.addWidget(self.sp_spread)
+        rowr.addWidget(QLabel("Stop-limit offset (bps):"))
+        rowr.addWidget(self.sp_stoplim)
         v.addLayout(rowr)
 
         # Shortcut
-        v.addSpacing(10); v.addWidget(QLabel("<b>Windows Desktop Shortcut</b>"))
+        v.addSpacing(10)
+        v.addWidget(QLabel("<b>Windows Desktop Shortcut</b>"))
         self.btn_shortcut = QPushButton("Create Desktop Shortcut")
         v.addWidget(self.btn_shortcut)
 
@@ -119,14 +175,19 @@ class SettingsPanel(QWidget):
         v.addStretch(1)
 
     def _browse(self):
-        d = QFileDialog.getExistingDirectory(self, "Select USB Keys Folder", self.path_edit.text())
-        if d: self.path_edit.setText(d)
+        d = QFileDialog.getExistingDirectory(
+            self, "Select USB Keys Folder", self.path_edit.text()
+        )
+        if d:
+            self.path_edit.setText(d)
 
     def _save_path(self):
         new_path = self.path_edit.text().strip()
         if new_path and new_path != self.config.usb_keys_path:
-            self.config.usb_keys_path = new_path; self.config.save()
-            if self._on_path_changed: self._on_path_changed(new_path)
+            self.config.usb_keys_path = new_path
+            self.config.save()
+            if self._on_path_changed:
+                self._on_path_changed(new_path)
 
     def _save_keys(self):
         keys = {
@@ -143,13 +204,13 @@ class SettingsPanel(QWidget):
         self.lbl_thresh.setText(f"{state.gate_threshold:.2f}")
 
     def _w_change(self, _):
-        state.w_model = self.wm.value()/100.0
-        state.w_sent = self.ws.value()/100.0
+        state.w_model = self.wm.value() / 100.0
+        state.w_sent = self.ws.value() / 100.0
 
     def _normalize(self):
         normalize_weights()
-        self.wm.setValue(int(state.w_model*100))
-        self.ws.setValue(int(state.w_sent*100))
+        self.wm.setValue(int(state.w_model * 100))
+        self.ws.setValue(int(state.w_sent * 100))
 
     def _sess_change(self, _):
         state.session_pre = self.chk_pre.isChecked()
@@ -157,8 +218,8 @@ class SettingsPanel(QWidget):
         state.session_after = self.chk_after.isChecked()
 
     def _stop_change(self, val: int):
-        state.stop_loss_pct = val/10000.0
-        self.lbl_stop.setText(f"Stop-loss: {state.stop_loss_pct*100:.2f}%")
+        state.stop_loss_pct = val / 10000.0
+        self.lbl_stop.setText(f"Stop-loss: {state.stop_loss_pct * 100:.2f}%")
 
     def _risk_change(self, _):
         state.slippage_bps = self.sp_slip.value()

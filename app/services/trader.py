@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+main
 import csv
 import json
 import math
@@ -14,6 +15,25 @@ import pytz
 from alpaca.trading.enums import OrderSide, OrderStatus, TimeInForce
 
 from app.config import settings
+from app.services import pricing
+from app.services.alpaca_client import AlpacaService
+
+
+# NOTE: We assume a MarketData service exists with get_quote(symbol) -> dict(bid, ask, last, ts).
+def _default_get_quote(symbol: str) -> Dict[str, Any]:
+    # Placeholder fake quote to keep imports sane if service isn't running.
+    now = datetime.now(tz=pytz.timezone(settings.TZ))
+    return {"symbol": symbol, "bid": 100.0, "ask": 100.5, "last": 100.2, "ts": now}
+
+
+try:
+    from app.services.market_data import get_quote as _market_get_quote
+except Exception:
+    get_quote: Callable[[str], Dict[str, Any]] = _default_get_quote
+else:
+    get_quote = cast(Callable[[str], Dict[str, Any]], _market_get_quote)
+
+=======
 from app.core.runtime_state import state
 from app.services import pricing
 from app.services.alpaca_client import AlpacaService
@@ -39,6 +59,7 @@ def get_quote(symbol: str) -> Quote:
     # Placeholder fake quote to keep imports sane if service isn't running.
     now = datetime.now(tz=pytz.timezone(settings.TZ))
     return {"symbol": symbol, "bid": 100.0, "ask": 100.5, "last": 100.2, "ts": now}
+main
 
 NY = pytz.timezone(settings.TZ)
 
@@ -92,17 +113,20 @@ def _decision_components_payload(result: DecisionResult, cash_to_use: float) -> 
     }
 
 
+main
 @dataclass
 class ReplaceState:
     last_ts: float = 0.0
     count: int = 0
     cooling_until: float = 0.0
 
+
 class TraderEngine:
     """
     Limit-only trading engine with FOK-like behavior pre/post per v3 spec.
     One-position policy: TSLL (long) or TSDD (long).
     """
+
     def __init__(self, alpaca: AlpacaService, data_dir: Path = Path("data")):
         self.alpaca = alpaca
         self.running = False
@@ -114,12 +138,15 @@ class TraderEngine:
         self._replace_state: Dict[str, ReplaceState] = {}  # order_id -> state
         self._peaks: Dict[str, float] = {}
         self._last_flip_ts: float = 0.0
+main
         self._ensure_csv()
 
     # --------------- Public control ---------------
     def start(self):
         self.running = True
-        self._thread = threading.Thread(target=self._run_loop, name="TraderEngine", daemon=True)
+        self._thread = threading.Thread(
+            target=self._run_loop, name="TraderEngine", daemon=True
+        )
         self._thread.start()
 
     def stop(self):
@@ -145,13 +172,18 @@ class TraderEngine:
 
         acct = self.alpaca.get_account()
         # Fail closed if account blocked
-        if getattr(acct, "trading_blocked", False) or getattr(acct, "account_blocked", False):
+        if getattr(acct, "trading_blocked", False) or getattr(
+            acct, "account_blocked", False
+        ):
             return
 
         # Enforce cash-only using settled cash proxy (non_marginable_buying_power)
-        settled_cash_str = getattr(acct, "non_marginable_buying_power", None) or getattr(acct, "cash", "0")
+        raw_candidate = getattr(acct, "non_marginable_buying_power", None)
+        if raw_candidate is None:
+            raw_candidate = getattr(acct, "cash", "0")
+        settled_cash_raw = cast(float | str, raw_candidate)
         try:
-            settled_cash = float(settled_cash_str)
+            settled_cash = float(settled_cash_raw)
         except Exception:
             settled_cash = 0.0
 
@@ -167,7 +199,11 @@ class TraderEngine:
         # What are we holding?
         pos_tsll = self.alpaca.get_position(settings.TSLL_SYMBOL)
         pos_tsdd = self.alpaca.get_position(settings.TSDD_SYMBOL)
-        holding = settings.TSLL_SYMBOL if pos_tsll else (settings.TSDD_SYMBOL if pos_tsdd else None)
+        holding = (
+            settings.TSLL_SYMBOL
+            if pos_tsll
+            else (settings.TSDD_SYMBOL if pos_tsdd else None)
+        )
 
         # Get quotes for both tickers to compute spreads and pricing previews
         q_tsll = get_quote(settings.TSLL_SYMBOL)
@@ -227,6 +263,23 @@ class TraderEngine:
     def _session_flags(self) -> tuple[bool, bool, bool]:
         now = datetime.now(NY)
         tod = now.time()
+        pre = (
+            self.session.pre
+            and (tod >= datetime.strptime("04:00", "%H:%M").time())
+            and (tod < datetime.strptime("09:30", "%H:%M").time())
+        )
+        rth = (
+            self.session.rth
+            and (tod >= datetime.strptime("09:30", "%H:%M").time())
+            and (tod < datetime.strptime("16:00", "%H:%M").time())
+        )
+        after = (
+            self.session.after
+            and (tod >= datetime.strptime("16:00", "%H:%M").time())
+            and (tod < datetime.strptime("20:00", "%H:%M").time())
+        )
+        return pre or rth or after
+=======
         pre = self.session.pre and (
             tod >= datetime.strptime("04:00", "%H:%M").time()
         ) and (
@@ -243,11 +296,14 @@ class TraderEngine:
             tod < datetime.strptime("20:00", "%H:%M").time()
         )
         return pre, rth, after
+main
 
     def _is_margin_account(self, acct) -> bool:
         # Heuristic: daytrading_buying_power exists/ > 0 or pattern_day_trader field present.
         dtbp = float(getattr(acct, "daytrading_buying_power", "0") or 0)
-        classification = getattr(acct, "classification", "")  # "margin" or "cash" on some envs
+        classification = getattr(
+            acct, "classification", ""
+        )  # "margin" or "cash" on some envs
         return dtbp > 0 or classification.lower() == "margin"
 
     def _choose_symbols(self, desired: str):
@@ -281,7 +337,12 @@ class TraderEngine:
         else:
             # Submit standard limit and manage replaces while open
             order = self.alpaca.submit_limit(
-                symbol=sym, qty=qty, side=side, limit_price=entry_limit, tif=tif, extended_hours=False
+                symbol=sym,
+                qty=qty,
+                side=side,
+                limit_price=entry_limit,
+                tif=tif,
+                extended_hours=False,
             )
             self._manage_open_limit(order.id, sym, "BUY")
 
@@ -290,15 +351,24 @@ class TraderEngine:
         if pos:
             avg = float(getattr(pos, "avg_entry_price", "0"))
             stop_px, stop_lmt = pricing.compute_stop_limit(
-                avg, settings.STOP_LOSS_PCT_DEFAULT, settings.STOP_LIMIT_OFFSET_BPS_DEFAULT
+                avg,
+                settings.STOP_LOSS_PCT_DEFAULT,
+                settings.STOP_LIMIT_OFFSET_BPS_DEFAULT,
             )
             try:
                 self.alpaca.submit_stop_limit(
-                    symbol=sym, qty=float(getattr(pos, "qty", 0)), side=OrderSide.SELL,  # exit protection
-                    stop_price=stop_px, limit_price=stop_lmt, tif=TimeInForce.DAY, extended_hours=False
+                    symbol=sym,
+                    qty=float(getattr(pos, "qty", 0)),
+                    side=OrderSide.SELL,  # exit protection
+                    stop_price=stop_px,
+                    limit_price=stop_lmt,
+                    tif=TimeInForce.DAY,
+                    extended_hours=False,
                 )
             except Exception as e:
-                print(f"[TraderEngine] stop-limit submit failed (will continue RTH-only): {e}")
+                print(
+                    f"[TraderEngine] stop-limit submit failed (will continue RTH-only): {e}"
+                )
 
         self._log_trade("ENTRY", sym, qty, entry_limit, note="open_side", decision_components=decision_components)
 
@@ -312,7 +382,9 @@ class TraderEngine:
             return
         qty = float(getattr(pos, "qty", 0))
         q = get_quote(symbol)
-        limit_px = pricing.compute_entry_limit("SELL", q["bid"], q["ask"], q["last"], self.risk.slippage_bps)
+        limit_px = pricing.compute_entry_limit(
+            "SELL", q["bid"], q["ask"], q["last"], self.risk.slippage_bps
+        )
 
         extended = self._is_extended_now()
         tif = TimeInForce.DAY
@@ -322,7 +394,12 @@ class TraderEngine:
             self._emulated_fok(symbol, qty, side, limit_px)
         else:
             order = self.alpaca.submit_limit(
-                symbol=symbol, qty=qty, side=side, limit_price=limit_px, tif=tif, extended_hours=False
+                symbol=symbol,
+                qty=qty,
+                side=side,
+                limit_price=limit_px,
+                tif=tif,
+                extended_hours=False,
             )
             self._manage_open_limit(order.id, symbol, "SELL")
 
@@ -351,9 +428,21 @@ class TraderEngine:
         p80 = avg + 0.8 * (peak - avg)
         if last <= p80 and peak > avg:
             # Take profit via limit
+            limit_px = pricing.compute_entry_limit(
+                "SELL", q["bid"], q["ask"], q["last"], self.risk.slippage_bps
+            )
+            self.alpaca.submit_limit(
+                symbol=symbol,
+                qty=qty,
+                side=OrderSide.SELL,
+                limit_price=limit_px,
+                tif=TimeInForce.DAY,
+                extended_hours=False,
+=======
             limit_px = pricing.compute_entry_limit("SELL", q["bid"], q["ask"], q["last"], self.risk.slippage_bps)
             self.alpaca.submit_limit(
                 symbol=symbol, qty=qty, side=OrderSide.SELL, limit_price=limit_px, tif=TimeInForce.DAY, extended_hours=False
+main
             )
             # No flip here; flip policy is handled by outer signal change
             self._log_trade(
@@ -363,6 +452,7 @@ class TraderEngine:
                 limit_px,
                 note=f"avg={avg},peak={peak},p80={p80}",
                 decision_components=decision_components,
+main
             )
 
     def _manage_open_limit(self, order_id: str, symbol: str, side_txt: str):
@@ -370,8 +460,13 @@ class TraderEngine:
         state = self._replace_state.setdefault(order_id, ReplaceState())
         while True:
             o = self.alpaca.get_order(order_id)
-            if o.status in (OrderStatus.FILLED, OrderStatus.CANCELED, OrderStatus.EXPIRED, OrderStatus.REJECTED,
-                            OrderStatus.PARTIALLY_FILLED):
+            if o.status in (
+                OrderStatus.FILLED,
+                OrderStatus.CANCELED,
+                OrderStatus.EXPIRED,
+                OrderStatus.REJECTED,
+                OrderStatus.PARTIALLY_FILLED,
+            ):
                 break
             now = time.time()
             if now < state.cooling_until:
@@ -379,9 +474,13 @@ class TraderEngine:
                 continue
             q = get_quote(symbol)
             if side_txt == "BUY":
-                new_px = pricing.compute_entry_limit("BUY", q["bid"], q["ask"], q["last"], self.risk.slippage_bps)
+                new_px = pricing.compute_entry_limit(
+                    "BUY", q["bid"], q["ask"], q["last"], self.risk.slippage_bps
+                )
             else:
-                new_px = pricing.compute_entry_limit("SELL", q["bid"], q["ask"], q["last"], self.risk.slippage_bps)
+                new_px = pricing.compute_entry_limit(
+                    "SELL", q["bid"], q["ask"], q["last"], self.risk.slippage_bps
+                )
             try:
                 # only replace if limit moved > 15 bps
                 old_px = float(getattr(o, "limit_price", "0") or 0)
@@ -389,8 +488,13 @@ class TraderEngine:
                     move_bps = abs((new_px - old_px) / old_px) * 10_000.0
                 else:
                     move_bps = 0.0
-                if (now - state.last_ts) >= self.risk.replace_min_interval_sec and move_bps > self.risk.replace_bps_threshold:
-                    o = self.alpaca.replace_limit(order_id, new_limit_price=round(new_px, 4))
+                if (
+                    (now - state.last_ts) >= self.risk.replace_min_interval_sec
+                    and move_bps > self.risk.replace_bps_threshold
+                ):
+                    o = self.alpaca.replace_limit(
+                        order_id, new_limit_price=round(new_px, 4)
+                    )
                     state.last_ts = now
                     state.count += 1
                     if state.count >= self.risk.replace_max_count:
@@ -401,14 +505,21 @@ class TraderEngine:
             except Exception:
                 break
 
-    def _emulated_fok(self, symbol: str, qty: float, side: OrderSide, limit_price: float):
+    def _emulated_fok(
+        self, symbol: str, qty: float, side: OrderSide, limit_price: float
+    ):
         # Submit extended-hours LIMIT+DAY with quick windows; keep partials.
         remaining = qty
         windows = 0
         while remaining > 0 and windows < self.risk.fok_max_windows:
             windows += 1
             order = self.alpaca.submit_limit(
-                symbol=symbol, qty=remaining, side=side, limit_price=limit_price, tif=TimeInForce.DAY, extended_hours=True
+                symbol=symbol,
+                qty=remaining,
+                side=side,
+                limit_price=limit_price,
+                tif=TimeInForce.DAY,
+                extended_hours=True,
             )
             time.sleep(self.risk.fok_window_ms / 1000.0)
             o = self.alpaca.get_order(order.id)
@@ -425,23 +536,59 @@ class TraderEngine:
                 break
             # quick re-check against quotes for next window
             q = get_quote(symbol)
-            limit_price = pricing.compute_entry_limit("BUY" if side == OrderSide.BUY else "SELL",
-                                                     q["bid"], q["ask"], q["last"], self.risk.slippage_bps)
+            limit_price = pricing.compute_entry_limit(
+                "BUY" if side == OrderSide.BUY else "SELL",
+                q["bid"],
+                q["ask"],
+                q["last"],
+                self.risk.slippage_bps,
+            )
 
     def _is_extended_now(self) -> bool:
         now = datetime.now(NY).time()
-        return (self.session.pre and datetime.strptime("04:00", "%H:%M").time() <= now < datetime.strptime("09:30", "%H:%M").time()) or \
-               (self.session.after and datetime.strptime("16:00", "%H:%M").time() <= now < datetime.strptime("20:00", "%H:%M").time())
+        return (
+            self.session.pre
+            and datetime.strptime("04:00", "%H:%M").time()
+            <= now
+            < datetime.strptime("09:30", "%H:%M").time()
+        ) or (
+            self.session.after
+            and datetime.strptime("16:00", "%H:%M").time()
+            <= now
+            < datetime.strptime("20:00", "%H:%M").time()
+        )
 
     def _ensure_csv(self):
         self.data_dir.mkdir(parents=True, exist_ok=True)
         if not self.trades_csv.exists():
             with open(self.trades_csv, "w", newline="") as f:
                 w = csv.writer(f)
-                w.writerow(["ts","action","symbol","qty","px","entry_limit","exit_limit","stop_limit","cash_before","cash_after",
-                            "prob_up","sentiment","p80_threshold","session","slippage_bps_used","spread_bps","decision_components_json","note"])
+                w.writerow(
+                    [
+                        "ts",
+                        "action",
+                        "symbol",
+                        "qty",
+                        "px",
+                        "entry_limit",
+                        "exit_limit",
+                        "stop_limit",
+                        "cash_before",
+                        "cash_after",
+                        "prob_up",
+                        "sentiment",
+                        "p80_threshold",
+                        "session",
+                        "slippage_bps_used",
+                        "spread_bps",
+                        "decision_components_json",
+                        "note",
+                    ]
+                )
 
     def _log_trade(
+        self, action: str, symbol: str, qty: float, px: float, note: str = ""
+=======
         self,
         action: str,
         symbol: str,
@@ -449,20 +596,57 @@ class TraderEngine:
         px: float,
         note: str = "",
         decision_components: Optional[Dict[str, Any]] = None,
+main
     ):
         ts = datetime.now(NY).isoformat()
         decision_json = json.dumps(decision_components or {})
         with open(self.trades_csv, "a", newline="") as f:
             w = csv.writer(f)
+            w.writerow(
+                [
+                    ts,
+                    action,
+                    symbol,
+                    qty,
+                    px,
+                    "",
+                    "",
+                    "",
+                    "",
+                    "",
+                    "",
+                    "",
+                    "",
+                    self._session_str(),
+                    self.risk.slippage_bps,
+                    "",
+                    json.dumps({}),
+                    note,
+                ]
+            )
+=======
             w.writerow([ts, action, symbol, qty, px, "", "", "", "", "", "", "", "", self._session_str(),
                         self.risk.slippage_bps, "", decision_json, note])
+main
 
     def _session_str(self) -> str:
         now = datetime.now(NY).time()
-        if datetime.strptime("04:00", "%H:%M").time() <= now < datetime.strptime("09:30", "%H:%M").time():
+        if (
+            datetime.strptime("04:00", "%H:%M").time()
+            <= now
+            < datetime.strptime("09:30", "%H:%M").time()
+        ):
             return "PRE"
-        if datetime.strptime("09:30", "%H:%M").time() <= now < datetime.strptime("16:00", "%H:%M").time():
+        if (
+            datetime.strptime("09:30", "%H:%M").time()
+            <= now
+            < datetime.strptime("16:00", "%H:%M").time()
+        ):
             return "RTH"
-        if datetime.strptime("16:00", "%H:%M").time() <= now < datetime.strptime("20:00", "%H:%M").time():
+        if (
+            datetime.strptime("16:00", "%H:%M").time()
+            <= now
+            < datetime.strptime("20:00", "%H:%M").time()
+        ):
             return "AFTER"
         return "OFF"

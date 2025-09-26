@@ -1,6 +1,7 @@
 import pytest
 
 
+main
 def test_imports():
     pytest.importorskip("alpaca.trading.client")
 

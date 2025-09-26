@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+main
 """
 logs_panel.py — Hotfix v1.4.5
 
@@ -12,7 +13,14 @@ This panel shows:
 - Simple table view of data/trades.csv (if present)
 """
 
+from __future__ import annotations
+
 import os
+import subprocess
+import sys
+from pathlib import Path
+=======
+main
 
 from PySide6.QtCore import QTimer
 from PySide6.QtGui import QTextCursor
@@ -32,6 +40,7 @@ from app.config.paths import DATA_DIR, LOGS_DIR
 LOG_PATH = LOGS_DIR / "app.log"
 TRADES_CSV = DATA_DIR / "trades.csv"
 
+
 class LogsPanel(QWidget):
     def __init__(self) -> None:
         super().__init__()
@@ -42,7 +51,9 @@ class LogsPanel(QWidget):
         row.addWidget(QLabel("<b>Logs</b>"))
         btn_open_logs = QPushButton("Open logs folder")
         btn_open_data = QPushButton("Open data folder")
-        row.addStretch(1); row.addWidget(btn_open_logs); row.addWidget(btn_open_data)
+        row.addStretch(1)
+        row.addWidget(btn_open_logs)
+        row.addWidget(btn_open_data)
         v.addLayout(row)
 
         # Log tail view
@@ -54,7 +65,9 @@ class LogsPanel(QWidget):
         # Trades table (very simple)
         self.tbl = QTableWidget(self)
         self.tbl.setColumnCount(6)
-        self.tbl.setHorizontalHeaderLabels(["ts","action","symbol","qty","px","note"])
+        self.tbl.setHorizontalHeaderLabels(
+            ["ts", "action", "symbol", "qty", "px", "note"]
+        )
         v.addWidget(self.tbl, 1)
 
         # Wire
@@ -62,12 +75,20 @@ class LogsPanel(QWidget):
         btn_open_data.clicked.connect(lambda: self._open_folder(DATA_DIR))
 
         # Timer to refresh tail & table
-        self.timer = QTimer(self); self.timer.timeout.connect(self._tick); self.timer.start(1500)
+        self.timer = QTimer(self)
+        self.timer.timeout.connect(self._tick)
+        self.timer.start(1500)
         self._tick()
 
-    def _open_folder(self, path):
+    def _open_folder(self, path: Path) -> None:
         try:
-            os.startfile(str(path))
+            if sys.platform.startswith("win"):
+                opener = getattr(os, "startfile", None)
+                if callable(opener):
+                    opener(str(path))
+            else:
+                cmd = "open" if sys.platform == "darwin" else "xdg-open"
+                subprocess.Popen([cmd, str(path)])
         except Exception:
             pass
 

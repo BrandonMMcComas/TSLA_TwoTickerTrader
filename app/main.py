@@ -8,5 +8,7 @@ def main():
     logger = setup_logging()
     logger.info("Starting TSLA Two-Ticker Trader — Section 03")
     launch_gui()
+
+
 if __name__ == "__main__":
     main()
